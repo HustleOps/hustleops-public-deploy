@@ -1157,7 +1157,7 @@ test("update-from-contract workflow trusts the canonical source app release iden
   assert.doesNotMatch(workflow, /HustleOps\/HustleOps\/\.github\/workflows\/release\.yml/);
 });
 
-test("update-from-contract workflow pushes automation PRs with the release GitHub App token", async () => {
+test("update-from-contract workflow pushes automation branches with the release app token and PRs with GITHUB_TOKEN", async () => {
   const workflow = await readFile(path.join(projectRoot, ".github", "workflows", "update-from-contract.yml"), "utf8");
 
   assert.match(
@@ -1168,16 +1168,14 @@ test("update-from-contract workflow pushes automation PRs with the release GitHu
   assert.match(workflow, /RELEASE_APP_CLIENT_ID/);
   assert.doesNotMatch(workflow, /RELEASE_APP_ID/);
   assert.match(workflow, /RELEASE_APP_PRIVATE_KEY/);
-  assert.match(workflow, /\n    permissions:\n      contents: read\n/);
-  assert.doesNotMatch(workflow, /\n      pull-requests: write\n/);
+  assert.match(workflow, /\n    permissions:\n      contents: read\n      pull-requests: write\n/);
   assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_CLIENT_ID \}\}/);
   assert.doesNotMatch(workflow, /^\s+app-id:/m);
   assert.match(workflow, /permission-contents: write/);
-  assert.match(workflow, /permission-pull-requests: write/);
+  assert.doesNotMatch(workflow, /permission-pull-requests: write/);
   assert.match(workflow, /APP_SLUG: \$\{\{ steps\.public-deploy-update-token\.outputs\.app-slug \}\}/);
   assert.match(workflow, /BRANCH_PUSH_TOKEN: \$\{\{ steps\.public-deploy-update-token\.outputs\.token \}\}/);
-  assert.match(workflow, /GH_TOKEN: \$\{\{ steps\.public-deploy-update-token\.outputs\.token \}\}/);
-  assert.doesNotMatch(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(workflow, /x-access-token:\$\{BRANCH_PUSH_TOKEN\}@github\.com\/\$\{REPOSITORY\}\.git/);
   assert.match(workflow, /git config user\.name "\$COMMITTER_NAME"/);
   assert.doesNotMatch(workflow, /PUBLIC_DEPLOY_UPDATE_APP_ID/);

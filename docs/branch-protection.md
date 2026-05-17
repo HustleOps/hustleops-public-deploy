@@ -76,7 +76,7 @@ RELEASE_APP_PRIVATE_KEY
 ```
 
 Rotate the App private key if release ownership changes and do not reuse it for production runtime access.
-The App must have repository Contents write permission for protected tag creation, release publication, and public deploy update branch pushes. It must also have Pull requests write permission so `Update From Release Contract` can open or update its automation PR with the App token instead of the workflow-scoped `GITHUB_TOKEN`. `Update From Release Contract` reads the App Client ID from `RELEASE_APP_CLIENT_ID` to make the expected identifier explicit.
+The App must have repository Contents write permission for protected tag creation, release publication, and public deploy update branch pushes. `Update From Release Contract` reads the App Client ID from `RELEASE_APP_CLIENT_ID` to make the expected identifier explicit, and uses the workflow-scoped `GITHUB_TOKEN` with `pull-requests: write` for PR list/create/edit operations.
 
 ## Production Environment
 
