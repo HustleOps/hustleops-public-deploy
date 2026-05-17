@@ -48,7 +48,7 @@ unchecked feature branch -> manual v1.2.3 tag -> release workflow -> production 
 
 `.github/workflows/create-release-tag.yml` is the preferred release tag creation path. It accepts `version`, validates `vMAJOR.MINOR.PATCH`, checks out `main` with persisted credentials disabled, rejects existing tags, creates an annotated tag, and pushes it with the release GitHub App token. The workflow keeps `contents: read` for the default `GITHUB_TOKEN`; only the App installation token receives `contents: write` for the tag push.
 
-For repositories with protected `v*` tag creation and GitHub Release publication, configure `RELEASE_APP_ID` as a repo or org variable containing the release GitHub App Client ID and `RELEASE_APP_PRIVATE_KEY` as a repository secret for the release GitHub App.
+For repositories with protected `v*` tag creation and GitHub Release publication, configure `RELEASE_APP_CLIENT_ID` as a repo or org variable containing the release GitHub App Client ID and `RELEASE_APP_PRIVATE_KEY` as a repository secret for the release GitHub App.
 
 ## GitHub Actions Hardening
 
@@ -95,8 +95,7 @@ permissions:
 - Keep production runtime secrets on the target host or in repository/organization secret stores selected for the runner model.
 - Keep release verification and build jobs free of production secrets.
 - Keep release GitHub App private keys separate from production runtime secrets.
-- Configure `RELEASE_APP_ID` as a repository or organization variable containing the release GitHub App Client ID for `Create Release Tag` and `Release`.
-- Configure `RELEASE_APP_CLIENT_ID` as a repository or organization variable containing the same release GitHub App Client ID for `Update From Release Contract`, and keep `RELEASE_APP_PRIVATE_KEY` as the shared release GitHub App private-key secret.
+- Configure `RELEASE_APP_CLIENT_ID` as a repository or organization variable containing the release GitHub App Client ID for `Create Release Tag`, `Release`, and `Update From Release Contract`, and keep `RELEASE_APP_PRIVATE_KEY` as the shared release GitHub App private-key secret.
 - Grant the release GitHub App `contents: write` so release tag creation, GitHub Release publication, and public deploy update branch pushes can request content-write installation tokens.
 - Grant the release GitHub App `pull requests: write` so `Update From Release Contract` can open or update the public deploy update PR without depending on the repository-wide GitHub Actions PR creation setting.
 - `Update From Release Contract` keeps the workflow-scoped `GITHUB_TOKEN` read-only and uses the release GitHub App token for both the automation branch push and PR list/create/edit operations.

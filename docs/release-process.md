@@ -25,7 +25,7 @@ Use GitHub Actions, not a local shell:
 
 The version must match `vMAJOR.MINOR.PATCH`. The release workflow also validates the checked-in release metadata before publishing release assets.
 
-The workflow checks out `main` with persisted credentials disabled, refuses to overwrite any local or remote tag, creates an annotated tag, and pushes it with the release GitHub App token. Configure `RELEASE_APP_ID` with the release GitHub App Client ID and `RELEASE_APP_PRIVATE_KEY`, then allow that App to create protected `v*` tags in the tag ruleset bypass list.
+The workflow checks out `main` with persisted credentials disabled, refuses to overwrite any local or remote tag, creates an annotated tag, and pushes it with the release GitHub App token. Configure `RELEASE_APP_CLIENT_ID` with the release GitHub App Client ID and `RELEASE_APP_PRIVATE_KEY`, then allow that App to create protected `v*` tags in the tag ruleset bypass list.
 
 ## Why Local Tag Pushes Are Forbidden
 

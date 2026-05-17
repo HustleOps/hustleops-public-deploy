@@ -63,11 +63,10 @@ The `Create Release Tag` workflow uses a dedicated GitHub App installation token
 Set this repo or org variable:
 
 ```text
-RELEASE_APP_ID
+RELEASE_APP_CLIENT_ID
 ```
 
-`RELEASE_APP_ID` must identify the release GitHub App.
-Use the GitHub App Client ID, not the legacy numeric App ID, because the workflow passes it to `actions/create-github-app-token` as `client-id`.
+`RELEASE_APP_CLIENT_ID` must identify the release GitHub App Client ID, not the legacy numeric App ID, because the workflow passes it to `actions/create-github-app-token` as `client-id`.
 
 Set this repository secret:
 
@@ -76,7 +75,7 @@ RELEASE_APP_PRIVATE_KEY
 ```
 
 Rotate the App private key if release ownership changes and do not reuse it for production runtime access.
-The App must have repository Contents write permission for protected tag creation, release publication, and public deploy update branch pushes. It must also have Pull requests write permission so `Update From Release Contract` can open or update its automation PR with the App token instead of the workflow-scoped `GITHUB_TOKEN`. `Update From Release Contract` reads the App Client ID from `RELEASE_APP_CLIENT_ID` to make the expected identifier explicit.
+The App must have repository Contents write permission for protected tag creation, release publication, and public deploy update branch pushes. It must also have Pull requests write permission so `Update From Release Contract` can open or update its automation PR with the App token instead of the workflow-scoped `GITHUB_TOKEN`. The release workflows and `Update From Release Contract` read the App Client ID from `RELEASE_APP_CLIENT_ID`.
 
 ## Production Environment
 
