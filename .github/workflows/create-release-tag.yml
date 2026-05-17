@@ -54,13 +54,13 @@ jobs:
       - name: Verify release GitHub App configuration
         shell: bash
         env:
-          RELEASE_APP_ID: ${{ vars.RELEASE_APP_ID }}
+          RELEASE_APP_CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
           RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
         run: |
           set -euo pipefail
 
-          if [[ -z "$RELEASE_APP_ID" ]]; then
-            echo "RELEASE_APP_ID is required to create protected release tags." >&2
+          if [[ -z "$RELEASE_APP_CLIENT_ID" ]]; then
+            echo "RELEASE_APP_CLIENT_ID is required to create protected release tags." >&2
             exit 2
           fi
 
@@ -73,7 +73,7 @@ jobs:
         id: release-tag-token
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3
         with:
-          client-id: ${{ vars.RELEASE_APP_ID }}
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
 

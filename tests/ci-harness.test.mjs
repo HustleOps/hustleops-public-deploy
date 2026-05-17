@@ -1112,14 +1112,15 @@ test("create-release-tag workflow uses GitHub App tag creation without an approv
   assert.doesNotMatch(workflow, /RELEASE_TAG_APPROVER/);
   assert.doesNotMatch(workflow, /Verify release tag approver/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.match(workflow, /RELEASE_APP_ID/);
+  assert.match(workflow, /RELEASE_APP_CLIENT_ID/);
   assert.match(workflow, /RELEASE_APP_PRIVATE_KEY/);
-  assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_ID \}\}/);
+  assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_CLIENT_ID \}\}/);
   assert.doesNotMatch(workflow, /^\s+app-id:/m);
   assert.match(workflow, /permission-contents: write/);
   assert.match(workflow, /git tag -a "\$VERSION" -m "Release \$VERSION"/);
   assert.match(workflow, /RELEASE_TAG_TOKEN: \$\{\{ steps\.release-tag-token\.outputs\.token \}\}/);
   assert.match(workflow, /x-access-token:\$\{RELEASE_TAG_TOKEN\}@github\.com/);
+  assert.doesNotMatch(workflow, /RELEASE_APP_ID/);
   assert.doesNotMatch(workflow, /RELEASE_TAG_APP_ID/);
   assert.doesNotMatch(workflow, /RELEASE_TAG_APP_PRIVATE_KEY/);
   assert.doesNotMatch(workflow, /RELEASE_TAG_DEPLOY_KEY/);
@@ -1131,13 +1132,14 @@ test("release workflow publishes with the release GitHub App token", async () =>
 
   assert.match(workflow, /Verify release GitHub App configuration/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.match(workflow, /RELEASE_APP_ID/);
+  assert.match(workflow, /RELEASE_APP_CLIENT_ID/);
   assert.match(workflow, /RELEASE_APP_PRIVATE_KEY/);
-  assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_ID \}\}/);
+  assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_CLIENT_ID \}\}/);
   assert.doesNotMatch(workflow, /^\s+app-id:/m);
   assert.match(workflow, /permission-contents: write/);
   assert.match(workflow, /GH_TOKEN: \$\{\{ steps\.release-token\.outputs\.token \}\}/);
   assert.doesNotMatch(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.doesNotMatch(workflow, /RELEASE_APP_ID/);
   assert.doesNotMatch(workflow, /RELEASE_TAG_APP_ID/);
   assert.doesNotMatch(workflow, /RELEASE_TAG_APP_PRIVATE_KEY/);
   assert.doesNotMatch(workflow, /permissions:\n\s+contents: write/);
