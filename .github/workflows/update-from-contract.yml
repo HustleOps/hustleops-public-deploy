@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
     steps:
       - name: Check out public deploy repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -194,7 +195,6 @@ jobs:
           client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
-          permission-pull-requests: write
 
       - name: Resolve public deploy update app bot identity
         if: steps.public-deploy-changes.outputs.has-changes == 'true'
@@ -220,7 +220,7 @@ jobs:
         shell: bash
         env:
           BRANCH_PUSH_TOKEN: ${{ steps.public-deploy-update-token.outputs.token }}
-          GH_TOKEN: ${{ steps.public-deploy-update-token.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           TAG: ${{ steps.public-deploy-changes.outputs.tag }}
           BRANCH_NAME: ${{ steps.public-deploy-changes.outputs.branch-name }}
@@ -235,7 +235,7 @@ jobs:
           fi
 
           if [[ -z "$GH_TOKEN" ]]; then
-            echo "Public deploy update GitHub App token is required to open or update the public deploy update PR." >&2
+            echo "GitHub Actions token is required to open or update the public deploy update PR." >&2
             exit 2
           fi
 
