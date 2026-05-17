@@ -98,6 +98,6 @@ permissions:
 - Configure `RELEASE_APP_ID` as a repository or organization variable containing the release GitHub App Client ID for `Create Release Tag` and `Release`.
 - Configure `RELEASE_APP_CLIENT_ID` as a repository or organization variable containing the same release GitHub App Client ID for `Update From Release Contract`, and keep `RELEASE_APP_PRIVATE_KEY` as the shared release GitHub App private-key secret.
 - Grant the release GitHub App `contents: write` so release tag creation, GitHub Release publication, and public deploy update branch pushes can request content-write installation tokens.
-- `Update From Release Contract` grants the workflow-scoped `GITHUB_TOKEN` `pull-requests: write` for opening or updating the public deploy update PR, so the release GitHub App does not need Pull requests write permission.
-- `Update From Release Contract` uses the release GitHub App token only for the automation branch push and uses the workflow-scoped `GITHUB_TOKEN` for PR list/create/edit operations.
+- Grant the release GitHub App `pull requests: write` so `Update From Release Contract` can open or update the public deploy update PR without depending on the repository-wide GitHub Actions PR creation setting.
+- `Update From Release Contract` keeps the workflow-scoped `GITHUB_TOKEN` read-only and uses the release GitHub App token for both the automation branch push and PR list/create/edit operations.
 - Do not configure `PUBLIC_DEPLOY_UPDATE_DEPLOY_KEY`, `PUBLIC_DEPLOY_UPDATE_APP_ID`, or `PUBLIC_DEPLOY_UPDATE_APP_PRIVATE_KEY`; the update workflow uses the release GitHub App instead.
