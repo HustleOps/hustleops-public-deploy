@@ -211,6 +211,7 @@ function markdownList(items, formatter, emptyLine) {
 function fileLooksLikeSourceContractChange(filePath) {
   return (
     filePath === ".env.example" ||
+    filePath === "docker-compose.prod.yml" ||
     filePath === "release-manifest.json" ||
     filePath === "release-verification.json" ||
     filePath === "deployment/release-trigger.txt" ||

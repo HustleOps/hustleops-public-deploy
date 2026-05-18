@@ -182,13 +182,6 @@ validate_hex_64() {
   [[ "$value" =~ ^[0-9a-fA-F]{64}$ ]] || fail "$name must be exactly 64 hexadecimal characters."
 }
 
-validate_digest_ref() {
-  local name="$1"
-  local value="${!name}"
-
-  [[ "$value" =~ :[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-fA-F]{64}$ ]] || fail "$name must include the release version tag and sha256 digest."
-}
-
 validate_cors_origin() {
   local value="$CORS_ORIGIN"
 
@@ -248,22 +241,11 @@ validate_env() {
     NGINX_TLS_CERT_PATH
     NGINX_TLS_KEY_PATH
   )
-  local digest_refs=(
-    HUSTLEOPS_BACKEND_IMAGE
-    HUSTLEOPS_FRONTEND_IMAGE
-    HUSTLEOPS_BACKEND_MIGRATION_IMAGE
-  )
   local name
 
   for name in "${required_plain[@]}"; do
     require_var "$name"
     require_non_placeholder "$name"
-  done
-
-  for name in "${digest_refs[@]}"; do
-    require_var "$name"
-    require_non_placeholder "$name"
-    validate_digest_ref "$name"
   done
 
   require_var JWT_ACCESS_SECRET
@@ -299,16 +281,22 @@ pull_image() {
 }
 
 run_pull_checks() {
+  local image_ref certificate_identity issuer
+
   note "Pulling pinned release images"
-  pull_image "$HUSTLEOPS_BACKEND_IMAGE"
-  pull_image "$HUSTLEOPS_FRONTEND_IMAGE"
-  pull_image "$HUSTLEOPS_BACKEND_MIGRATION_IMAGE"
+  [[ -n "$SIGNATURE_PLAN_FILE" ]] || fail "Image plan was not generated."
+
+  while IFS=$'\t' read -r image_ref certificate_identity issuer; do
+    [[ -n "$image_ref" ]] || continue
+    pull_image "$image_ref"
+  done < "$SIGNATURE_PLAN_FILE"
 }
 
 validate_release_metadata() {
   local args=(
     "$PROJECT_ROOT/scripts/validate-release-metadata.mjs"
     --env-file "$ENV_FILE"
+    --compose-file "$COMPOSE_FILE"
     --manifest-file "$MANIFEST_FILE"
     --verification-file "$VERIFICATION_FILE"
     --deployment-trigger-file "$DEPLOYMENT_TRIGGER_FILE"
@@ -316,10 +304,8 @@ validate_release_metadata() {
   )
 
   note "Validating release metadata"
-  if [[ $SKIP_SIGNATURE_VERIFY -eq 0 ]]; then
-    SIGNATURE_PLAN_FILE="$(mktemp)"
-    args+=(--signature-plan-file "$SIGNATURE_PLAN_FILE")
-  fi
+  SIGNATURE_PLAN_FILE="$(mktemp)"
+  args+=(--signature-plan-file "$SIGNATURE_PLAN_FILE")
 
   node "${args[@]}"
 }

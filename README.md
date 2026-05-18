@@ -46,7 +46,7 @@ Repository maintainers can update this deployment bundle from a signed release c
 2. Keep the default contract ref for the latest release, or enter a specific `ghcr.io/hustleops/hustleops-release-contract:<version>` ref.
 3. Review and merge the generated update PR after CI passes.
 
-The workflow verifies the contract signature before reading the JSON payload, cross-checks the verified payload trust fields, verifies runtime image signatures, updates `.env.example`, records root and immutable release metadata, and validates the deploy scripts, Compose files, and nginx configs. After the generated update PR is merged to `main`, the `Release Public Deploy` workflow publishes the next independent `public-deploy-vX.Y.Z` release for this repository and attaches the current public contract metadata. Direct changes to this repository also create a new public deploy release, even when the source application version is unchanged.
+The workflow verifies the contract signature before reading the JSON payload, cross-checks the verified payload trust fields, verifies runtime image signatures, updates `docker-compose.prod.yml` with the checked-in image refs, refreshes `.env.example` release metadata, records root and immutable release metadata, and validates the deploy scripts, Compose files, and nginx configs. After the generated update PR is merged to `main`, create a protected `v*` tag with the `Create Release Tag` workflow so the tag-triggered `Release` workflow publishes the GitHub Release.
 
 After pulling a newer public deploy repository release, run:
 
@@ -54,7 +54,7 @@ After pulling a newer public deploy repository release, run:
 ./scripts/deploy.sh update --env-file .env
 ```
 
-The update flow syncs release-managed image and metadata values from `.env.example` into `.env`, runs preflight checks, captures a PostgreSQL backup, applies pending migrations, runs the idempotent bootstrap contract, recreates core application services, starts n8n and the OpenSearch ancillary bundle, publishes ancillary proxy ports, and prints service status plus access addresses. Operator-provided secrets in `.env` are preserved.
+The update flow uses image refs already checked into `docker-compose.prod.yml`, syncs release metadata values from `.env.example` into `.env`, runs preflight checks, captures a PostgreSQL backup, applies pending migrations, runs the idempotent bootstrap contract, recreates core application services, starts n8n and the OpenSearch ancillary bundle, publishes ancillary proxy ports, and prints service status plus access addresses. Operator-provided secrets in `.env` are preserved; legacy `HUSTLEOPS_*_IMAGE` values in an older `.env` file are ignored by the Compose bundle.
 
 n8n and the OpenSearch ancillary bundle start by default and are exposed over HTTPS through the ancillary reverse proxy. OpenSearch and OpenSearch Dashboards are started together under the `ancillary-public` Compose profile. Use `--skip-ancillary` when those ports and OpenSearch services must not be published or started, and use `--skip-n8n` when the n8n runtime itself should not be started.
 
@@ -133,4 +133,4 @@ Bring down containers and networks entirely (data volumes are preserved):
 
 ## Rollback
 
-Use the previous release entry under `releases/`, restore the matching image refs in `.env`, run preflight checks, and roll services forward or backward only after confirming database compatibility.
+Use the previous release entry under `releases/`, restore the matching image refs in `docker-compose.prod.yml`, run preflight checks, and roll services forward or backward only after confirming database compatibility.

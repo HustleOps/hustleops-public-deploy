@@ -222,14 +222,48 @@ function replaceEnvValue(content, key, value) {
   return content.replace(linePattern, line);
 }
 
+function removeEnvValue(content, key) {
+  const linePattern = new RegExp(`^${key}=.*\\n?`, "m");
+  return content.replace(linePattern, "");
+}
+
 async function updateEnvTemplate(filePath, contract, deploymentTrigger) {
   let content = await readFile(filePath, "utf8");
 
-  content = replaceEnvValue(content, "HUSTLEOPS_BACKEND_IMAGE", contract.images.backend.immutableRef);
-  content = replaceEnvValue(content, "HUSTLEOPS_FRONTEND_IMAGE", contract.images.frontend.immutableRef);
-  content = replaceEnvValue(content, "HUSTLEOPS_BACKEND_MIGRATION_IMAGE", contract.images.migration.immutableRef);
+  content = removeEnvValue(content, "HUSTLEOPS_BACKEND_IMAGE");
+  content = removeEnvValue(content, "HUSTLEOPS_FRONTEND_IMAGE");
+  content = removeEnvValue(content, "HUSTLEOPS_BACKEND_MIGRATION_IMAGE");
+  content = content.replace(/\n{3,}/g, "\n\n");
   content = replaceEnvValue(content, "HUSTLEOPS_RELEASE_TAG", contract.release.tag);
   content = replaceEnvValue(content, "HUSTLEOPS_RELEASE_TRIGGER", deploymentTrigger);
+
+  await writeFile(filePath, content.endsWith("\n") ? content : `${content}\n`);
+}
+
+function replaceServiceImage(content, serviceName, imageRef) {
+  const escapedName = serviceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const servicePattern = new RegExp(`(^  ${escapedName}:\\n[\\s\\S]*?)(?=^  [A-Za-z0-9_-]+:\\n|^networks:)`, "m");
+  const match = content.match(servicePattern);
+
+  if (!match) {
+    throw new Error(`docker-compose.prod.yml is missing service ${serviceName}.`);
+  }
+
+  if (!/^    image:/m.test(match[1])) {
+    throw new Error(`docker-compose.prod.yml service ${serviceName} is missing image.`);
+  }
+
+  const nextService = match[1].replace(/^    image:\s*.*$/m, `    image: ${imageRef}`);
+  return content.replace(match[1], nextService);
+}
+
+async function updateComposeImages(filePath, contract) {
+  let content = await readFile(filePath, "utf8");
+
+  content = replaceServiceImage(content, "backend", contract.images.backend.immutableRef);
+  content = replaceServiceImage(content, "backend-migrate", contract.images.migration.immutableRef);
+  content = replaceServiceImage(content, "backend-bootstrap", contract.images.migration.immutableRef);
+  content = replaceServiceImage(content, "frontend", contract.images.frontend.immutableRef);
 
   await writeFile(filePath, content.endsWith("\n") ? content : `${content}\n`);
 }
@@ -267,6 +301,7 @@ function buildRootManifest({
   const existingExtensions = existingManifest.extensions ?? {};
   const existingDeployment = existingExtensions.deployment ?? {};
   const existingMigration = existingExtensions.migration ?? {};
+  const { envVar: _legacyMigrationEnvVar, ...migrationExtension } = existingMigration;
   const existingVerification = existingExtensions.verification ?? {};
   const successOutputMarkers = Array.isArray(contract.migration?.successOutputMarkers)
     ? contract.migration.successOutputMarkers
@@ -295,6 +330,7 @@ function buildRootManifest({
         ...existingDeployment,
         envFilePath: existingDeployment.envFilePath ?? ".env.example",
         composePath: existingDeployment.composePath ?? "docker-compose.prod.yml",
+        imageRefSource: "docker-compose.prod.yml service image fields",
         nginxConfigPath: existingDeployment.nginxConfigPath ?? "nginx/nginx.conf",
         nginxAncillaryConfigPath: existingDeployment.nginxAncillaryConfigPath ?? "nginx/nginx.ancillary.conf",
         nginxSecurityHeadersPath: existingDeployment.nginxSecurityHeadersPath ?? "nginx/security-headers.conf",
@@ -304,23 +340,23 @@ function buildRootManifest({
         immutableReleasePath: `releases/${tag}.json`,
       },
       migration: {
-        ...existingMigration,
-        service: existingMigration.service ?? "backend-migrate",
-        profile: existingMigration.profile ?? "migration",
-        envVar: existingMigration.envVar ?? "HUSTLEOPS_BACKEND_MIGRATION_IMAGE",
-        databaseUrlEnvVar: existingMigration.databaseUrlEnvVar ?? "DATABASE_URL",
+        ...migrationExtension,
+        service: migrationExtension.service ?? "backend-migrate",
+        profile: migrationExtension.profile ?? "migration",
+        imageSource: "docker-compose.prod.yml services.backend-migrate.image",
+        databaseUrlEnvVar: migrationExtension.databaseUrlEnvVar ?? "DATABASE_URL",
         timeoutSeconds: contract.migration.timeoutSeconds,
-        timeoutSemantics: existingMigration.timeoutSemantics ?? "fail if docker compose run --rm exceeds timeoutSeconds or exits non-zero",
-        successExitCode: existingMigration.successExitCode ?? 0,
+        timeoutSemantics: migrationExtension.timeoutSemantics ?? "fail if docker compose run --rm exceeds timeoutSeconds or exits non-zero",
+        successExitCode: migrationExtension.successExitCode ?? 0,
         successOutputMarkers,
         successMarkerPath: `state/${tag}.migration-success.json`,
-        successMarkerFormat: existingMigration.successMarkerFormat ?? "json",
-        successMarkerSchemaVersion: existingMigration.successMarkerSchemaVersion ?? SCHEMA_VERSION,
-        ownership: existingMigration.ownership ?? "single-runner",
-        rerunPolicy: existingMigration.rerunPolicy ?? "idempotent",
-        repeatReleaseBehavior: existingMigration.repeatReleaseBehavior ?? "safe-to-rerun-same-release",
+        successMarkerFormat: migrationExtension.successMarkerFormat ?? "json",
+        successMarkerSchemaVersion: migrationExtension.successMarkerSchemaVersion ?? SCHEMA_VERSION,
+        ownership: migrationExtension.ownership ?? "single-runner",
+        rerunPolicy: migrationExtension.rerunPolicy ?? "idempotent",
+        repeatReleaseBehavior: migrationExtension.repeatReleaseBehavior ?? "safe-to-rerun-same-release",
         releaseLinkage: {
-          ...(existingMigration.releaseLinkage ?? {}),
+          ...(migrationExtension.releaseLinkage ?? {}),
           releaseTag: tag,
           releaseVersion: version,
           releaseUrl: contract.release.url,
@@ -471,6 +507,11 @@ async function main() {
     "env-template-file",
     path.join(projectRoot, ".env.example"),
   );
+  const composeFile = optionalArg(
+    args,
+    "compose-file",
+    path.join(projectRoot, "docker-compose.prod.yml"),
+  );
   const releaseDir = optionalArg(args, "release-dir", path.join(projectRoot, "releases"));
   const manifestFile = optionalArg(
     args,
@@ -525,6 +566,7 @@ async function main() {
   const releaseRecordFile = path.join(releaseDir, `${tag}.json`);
 
   await updateEnvTemplate(envTemplateFile, contract, deploymentTrigger);
+  await updateComposeImages(composeFile, contract);
   await mkdir(path.dirname(manifestFile), { recursive: true });
   await writeFile(manifestFile, `${JSON.stringify(rootManifest, null, 2)}\n`);
   await mkdir(path.dirname(verificationFile), { recursive: true });
@@ -549,6 +591,7 @@ async function main() {
   process.stdout.write(`${JSON.stringify(
     {
       releaseTag: tag,
+      composeFile,
       manifestFile,
       verificationFile,
       releaseRecordFile,

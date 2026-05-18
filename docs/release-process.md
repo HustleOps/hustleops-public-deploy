@@ -56,7 +56,7 @@ Operators can still run the same command directly on the target host when GitHub
 
 ## Rollback Considerations
 
-Roll back by selecting a previously reviewed and protected release record, restoring the matching release metadata and runtime references, validating the deploy bundle, and creating a new reviewed release if needed. Do not move old release tags. Immutable tags are audit records; a rollback should create a new reviewed state rather than rewriting history.
+Roll back by selecting a previously reviewed and protected release record, restoring the matching release metadata and `docker-compose.prod.yml` runtime image references, validating the deploy bundle, and creating a new reviewed release if needed. Do not move old release tags. Immutable tags are audit records; a rollback should create a new reviewed state rather than rewriting history.
 
 ## Forbidden Release Paths
 

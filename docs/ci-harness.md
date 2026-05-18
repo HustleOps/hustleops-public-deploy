@@ -14,7 +14,7 @@ The stable required job names are:
 - `validate`
 - `action-security`
 
-`validate` keeps the existing deploy-bundle checks: shell syntax, ShellCheck, Node syntax, actionlint, Node tests, generated CI env validation, release metadata validation, Docker Compose rendering, Nginx validation, preflight, and deploy dry-run. It also detects common Node.js and Python project files and runs standard checks when those stacks are present.
+`validate` keeps the existing deploy-bundle checks: shell syntax, ShellCheck, Node syntax, actionlint, Node tests, generated CI env validation, release metadata validation against the checked-in Compose image refs, Docker Compose rendering, Nginx validation, preflight, and deploy dry-run. It also detects common Node.js and Python project files and runs standard checks when those stacks are present.
 
 `action-security` runs `scripts/ci/check-actions-pinning.sh` in enforcing mode. The script exits non-zero when external `uses:` references are not pinned to full 40-character SHAs.
 

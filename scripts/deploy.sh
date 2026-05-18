@@ -84,8 +84,9 @@ Options:
 
 The setup and update flows call scripts/preflight.sh, scripts/backup-postgres.sh,
 scripts/run-migration.sh, and the backend-bootstrap Compose service.
-Release-managed image and metadata values are synced from .env.example into
-.env before preflight; operator-provided secrets are preserved.
+Release metadata values are synced from .env.example into .env before
+preflight; runtime images are pinned directly in docker-compose.prod.yml.
+Operator-provided secrets are preserved.
 EOF
 }
 
@@ -631,19 +632,16 @@ check_files() {
 
 sync_release_env() {
   local managed_keys=(
-    HUSTLEOPS_BACKEND_IMAGE
-    HUSTLEOPS_FRONTEND_IMAGE
-    HUSTLEOPS_BACKEND_MIGRATION_IMAGE
     HUSTLEOPS_RELEASE_TAG
     HUSTLEOPS_RELEASE_TRIGGER
   )
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    printf 'DRY RUN: sync release-managed env keys from %q to %q\n' "$ENV_TEMPLATE_FILE" "$ENV_FILE"
+    printf 'DRY RUN: sync release metadata env keys from %q to %q\n' "$ENV_TEMPLATE_FILE" "$ENV_FILE"
     return 0
   fi
 
-  verbose_note "Syncing release-managed env keys from $ENV_TEMPLATE_FILE to $ENV_FILE"
+  verbose_note "Syncing release metadata env keys from $ENV_TEMPLATE_FILE to $ENV_FILE"
 
   node - "$ENV_FILE" "$ENV_TEMPLATE_FILE" "${managed_keys[@]}" <<'NODE'
 const fs = require('node:fs');
@@ -697,7 +695,7 @@ if (missingEnvKeys.length > 0) {
   if (nextLines.length > 0 && nextLines.at(-1) !== '') {
     nextLines.push('');
   }
-  nextLines.push('# Release-managed values synced from .env.example');
+  nextLines.push('# Release metadata values synced from .env.example');
   for (const key of missingEnvKeys) {
     nextLines.push(`${key}=${templateAssignments.get(key)}`);
   }
@@ -1146,7 +1144,7 @@ run_setup_flow() {
   step 1 7 "Checking required tools and files"
   check_tools
   check_files
-  step 2 7 "Syncing release-managed environment values"
+  step 2 7 "Syncing release metadata environment values"
   sync_release_env
   sync_derived_env
   step 3 7 "Preparing nginx TLS certificate"
@@ -1171,7 +1169,7 @@ run_standard_flow() {
   step 1 7 "Checking required tools and files"
   check_tools
   check_files
-  step 2 7 "Syncing release-managed environment values"
+  step 2 7 "Syncing release metadata environment values"
   sync_release_env
   sync_derived_env
   step 3 7 "Running preflight checks"

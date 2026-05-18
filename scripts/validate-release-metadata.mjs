@@ -6,13 +6,12 @@ import path from "node:path";
 const scriptDir = import.meta.dirname;
 const projectRoot = path.resolve(scriptDir, "..");
 const IMAGE_KEYS = ["backend", "frontend", "migration"];
-const ENV_IMAGE_KEYS = {
-  backend: "HUSTLEOPS_BACKEND_IMAGE",
-  frontend: "HUSTLEOPS_FRONTEND_IMAGE",
-  migration: "HUSTLEOPS_BACKEND_MIGRATION_IMAGE",
+const COMPOSE_IMAGE_SERVICES = {
+  backend: "backend",
+  frontend: "frontend",
+  migration: "backend-migrate",
 };
 const REQUIRED_ENV_KEYS = [
-  ...Object.values(ENV_IMAGE_KEYS),
   "HUSTLEOPS_RELEASE_TAG",
   "HUSTLEOPS_RELEASE_TRIGGER",
 ];
@@ -20,6 +19,7 @@ const REQUIRED_ENV_KEYS = [
 function parseArgs(argv) {
   const args = {
     "env-file": path.join(projectRoot, ".env"),
+    "compose-file": path.join(projectRoot, "docker-compose.prod.yml"),
     "manifest-file": path.join(projectRoot, "release-manifest.json"),
     "verification-file": path.join(projectRoot, "release-verification.json"),
     "deployment-trigger-file": path.join(projectRoot, "deployment", "release-trigger.txt"),
@@ -137,6 +137,52 @@ function assertEqual(actual, expected, message) {
   }
 }
 
+function composeServiceBlock(compose, serviceName, composeFile) {
+  const escapedName = serviceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = compose.match(new RegExp(`^  ${escapedName}:\\n[\\s\\S]*?(?=^  [A-Za-z0-9_-]+:\\n|^networks:)`, "m"));
+
+  if (!match) {
+    throw new Error(`${composeFile} is missing service ${serviceName}.`);
+  }
+
+  return match[0];
+}
+
+function unquoteComposeValue(value) {
+  const normalized = value.trim();
+
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    return normalized.slice(1, -1);
+  }
+
+  return normalized;
+}
+
+function readComposeImageRef(compose, serviceName, composeFile) {
+  const service = composeServiceBlock(compose, serviceName, composeFile);
+  const match = service.match(/^    image:\s*(.+)$/m);
+
+  if (!match) {
+    throw new Error(`${composeFile} service ${serviceName} is missing image.`);
+  }
+
+  return unquoteComposeValue(match[1]);
+}
+
+async function readComposeImages(filePath) {
+  const compose = await readFile(filePath, "utf8");
+
+  return Object.fromEntries(
+    Object.entries(COMPOSE_IMAGE_SERVICES).map(([imageKey, serviceName]) => [
+      imageKey,
+      readComposeImageRef(compose, serviceName, filePath),
+    ]),
+  );
+}
+
 function assertReleaseIdentity({ env, manifest, verification }) {
   const envTag = requireString(env.get("HUSTLEOPS_RELEASE_TAG"), "HUSTLEOPS_RELEASE_TAG");
   const manifestTag = requireString(manifest.release?.tag, "release-manifest.json release.tag");
@@ -175,7 +221,7 @@ function immutableRef(image, version, imageKey) {
   return `${ref}:${version}@${digest}`;
 }
 
-function assertImageMetadata({ env, manifest, verification, version }) {
+function assertImageMetadata({ composeImages, manifest, verification, version }) {
   const trustPolicy = verification.trustPolicy ?? {};
   const issuer = requireString(trustPolicy.issuer, "release-verification.json trustPolicy.issuer");
   const certificateIdentity = requireString(
@@ -185,9 +231,12 @@ function assertImageMetadata({ env, manifest, verification, version }) {
   const signaturePlan = [];
 
   for (const imageKey of IMAGE_KEYS) {
-    const envName = ENV_IMAGE_KEYS[imageKey];
     const manifestImage = manifest.images?.[imageKey];
     const verificationImage = verification.images?.[imageKey];
+    const composeImage = requireString(
+      composeImages[imageKey],
+      `docker-compose.prod.yml service ${COMPOSE_IMAGE_SERVICES[imageKey]} image`,
+    );
 
     if (!manifestImage) {
       throw new Error(`release-manifest.json is missing images.${imageKey}.`);
@@ -218,9 +267,9 @@ function assertImageMetadata({ env, manifest, verification, version }) {
       `release-verification.json images.${imageKey}.immutableRef must match release-manifest.json image ref, version, and digest`,
     );
     assertEqual(
-      env.get(envName),
+      composeImage,
       verificationImmutableRef,
-      `${envName} must match release-verification.json images.${imageKey}.immutableRef`,
+      `docker-compose.prod.yml service ${COMPOSE_IMAGE_SERVICES[imageKey]} image must match release-verification.json images.${imageKey}.immutableRef`,
     );
 
     const signature = verificationImage.verification?.signature ?? {};
@@ -282,6 +331,7 @@ function assertReleaseRecord({ releaseRecord, manifest, tag, version }) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const env = await readEnv(args["env-file"]);
+  const composeImages = await readComposeImages(args["compose-file"]);
   const manifest = await readJson(args["manifest-file"], "release manifest");
   const verification = await readJson(args["verification-file"], "release verification");
   const deploymentTrigger = await readTrimmed(args["deployment-trigger-file"], "deployment trigger");
@@ -290,7 +340,7 @@ async function main() {
   assertDeploymentTrigger({ env, manifest, deploymentTrigger });
 
   const signaturePlan = assertImageMetadata({
-    env,
+    composeImages,
     manifest,
     verification,
     version,
