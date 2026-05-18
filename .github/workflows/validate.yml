@@ -39,8 +39,8 @@ jobs:
       - name: Validate scripts
         run: |
           set -euo pipefail
-          bash -n scripts/preflight.sh scripts/backup-postgres.sh scripts/run-migration.sh scripts/deploy.sh scripts/validate-nginx.sh scripts/ci/verify-production-approver.sh
-          shellcheck scripts/preflight.sh scripts/backup-postgres.sh scripts/run-migration.sh scripts/deploy.sh scripts/validate-nginx.sh scripts/ci/verify-production-approver.sh
+          bash -n scripts/preflight.sh scripts/backup-postgres.sh scripts/run-migration.sh scripts/deploy.sh scripts/validate-nginx.sh
+          shellcheck scripts/preflight.sh scripts/backup-postgres.sh scripts/run-migration.sh scripts/deploy.sh scripts/validate-nginx.sh
           node --check scripts/build-public-release-notes.mjs
           node --check scripts/update-from-contract.mjs
           node --check scripts/make-ci-env.mjs

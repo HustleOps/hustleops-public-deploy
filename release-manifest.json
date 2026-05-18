@@ -1,41 +1,41 @@
 {
   "schemaVersion": 1,
   "release": {
-    "tag": "v0.2.4",
-    "version": "0.2.4",
-    "commitSha": "c08d7b961b680c8bdd1ec6e7758cb8389230f0b6",
-    "releasedAt": "2026-05-10T13:27:45Z",
-    "summary": "Release v0.2.4 public runtime images and migration contract.",
-    "url": "https://github.com/HustleOps/HustleOps/releases/tag/v0.2.4"
+    "tag": "v0.2.5",
+    "version": "0.2.5",
+    "commitSha": "468be65bb7dc4992aba2e2d7146fe835ddf120d0",
+    "releasedAt": "2026-05-15T19:47:27Z",
+    "summary": "Release v0.2.5 public runtime images and migration contract.",
+    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.2.5"
   },
   "images": {
     "backend": {
       "name": "hustleops-public-backend",
       "ref": "ghcr.io/hustleops/hustleops-public-backend",
       "tags": [
-        "0.2.4"
+        "0.2.5"
       ],
-      "digest": "sha256:c1247ead3e4379878a40251807738f5d094fb92c6f9b58133cc793939c6cde26"
+      "digest": "sha256:ee0334717dd29f96e124be02f9ebf23ed1a58be392559cd88f94125a0134ee4c"
     },
     "frontend": {
       "name": "hustleops-public-frontend",
       "ref": "ghcr.io/hustleops/hustleops-public-frontend",
       "tags": [
-        "0.2.4"
+        "0.2.5"
       ],
-      "digest": "sha256:22511e89ebf6a156d7a28d97dd9833feebbe662f13f6cbaaf15d904ba4dc2a22"
+      "digest": "sha256:eca576a5bcebd0ba8644c0ebaeed5689edf6c29622cefc7a9c469c5ce473485e"
     },
     "migration": {
       "name": "hustleops-public-backend-migrate",
       "ref": "ghcr.io/hustleops/hustleops-public-backend-migrate",
       "tags": [
-        "0.2.4"
+        "0.2.5"
       ],
-      "digest": "sha256:43aafa51eb1ad6651da95d83a05e9b112ffaf01235c22b1fc84c74d48ec25b5d"
+      "digest": "sha256:2c547d699e88f2693c0aa90aa9e84eb890affcc7118b22c60b96dfed83749b6d"
     }
   },
   "deploy": {
-    "trigger": "release-v0.2.4-c08d7b961b68",
+    "trigger": "release-v0.2.5-468be65bb7dc",
     "publicPorts": [
       80,
       5678,
@@ -77,7 +77,7 @@
       "manifestPath": "release-manifest.json",
       "verificationPath": "release-verification.json",
       "deploymentTriggerPath": "deployment/release-trigger.txt",
-      "immutableReleasePath": "releases/v0.2.4.json"
+      "immutableReleasePath": "releases/v0.2.5.json"
     },
     "migration": {
       "service": "backend-migrate",
@@ -92,7 +92,7 @@
         "All migrations have been successfully applied.",
         "No pending migrations to apply."
       ],
-      "successMarkerPath": "state/v0.2.4.migration-success.json",
+      "successMarkerPath": "state/v0.2.5.migration-success.json",
       "successMarkerFormat": "json",
       "successMarkerSchemaVersion": 1,
       "successMarkerRequiredFields": [
@@ -112,11 +112,11 @@
       "rerunPolicy": "idempotent",
       "repeatReleaseBehavior": "safe-to-rerun-same-release",
       "releaseLinkage": {
-        "releaseTag": "v0.2.4",
-        "releaseVersion": "0.2.4",
-        "releaseUrl": "https://github.com/HustleOps/HustleOps/releases/tag/v0.2.4",
-        "deployTrigger": "release-v0.2.4-c08d7b961b68",
-        "immutableReleasePath": "releases/v0.2.4.json",
+        "releaseTag": "v0.2.5",
+        "releaseVersion": "0.2.5",
+        "releaseUrl": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.2.5",
+        "deployTrigger": "release-v0.2.5-468be65bb7dc",
+        "immutableReleasePath": "releases/v0.2.5.json",
         "verificationPath": "release-verification.json",
         "manifestPath": "release-manifest.json"
       }
@@ -124,7 +124,7 @@
     "verification": {
       "provider": "github-actions",
       "issuer": "https://token.actions.githubusercontent.com",
-      "certificateIdentity": "https://github.com/HustleOps/HustleOps/.github/workflows/release.yml@refs/tags/v0.2.4",
+      "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.5",
       "requiredArtifacts": [
         "signature",
         "provenance",

@@ -98,7 +98,6 @@ jobs:
             scripts/deploy.sh \
             scripts/validate-nginx.sh \
             scripts/ci/verify-release-tag-from-main.sh \
-            scripts/ci/verify-production-approver.sh \
             scripts/ci/check-actions-pinning.sh
           shellcheck \
             scripts/preflight.sh \
@@ -107,7 +106,6 @@ jobs:
             scripts/deploy.sh \
             scripts/validate-nginx.sh \
             scripts/ci/verify-release-tag-from-main.sh \
-            scripts/ci/verify-production-approver.sh \
             scripts/ci/check-actions-pinning.sh
           node --check scripts/build-public-release-notes.mjs
           node --check scripts/build-public-deploy-release.mjs

@@ -11,7 +11,7 @@
 1. Runtime image references for backend and frontend.
 2. The deploy payload files in this repository.
 3. Release metadata such as `release-manifest.json`, `deployment/release-trigger.txt`, and `releases/<tag>.json`.
-4. A GitHub Release after the update PR lands on `main` and a protected `v*` tag is created, with `releases/<tag>.json` attached as the source app contract.
+4. A GitHub Release automatically after the update PR lands on `main` and a protected `v*` tag is created, with `releases/<tag>.json` attached as the source app contract.
 
 The protected release tag identifies the reviewed deployment bundle state. The
 checked-in release metadata and attached `releases/<tag>.json` asset identify

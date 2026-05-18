@@ -4,23 +4,17 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Release version tag to publish, for example v1.2.3"
-        required: true
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.version || github.ref_name }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 env:
   NODE_VERSION: "24"
-  RELEASE_TAG: ${{ inputs.version || github.ref_name }}
+  RELEASE_TAG: ${{ github.ref_name }}
 
 jobs:
   verify-release-source:
@@ -74,7 +68,6 @@ jobs:
             scripts/deploy.sh \
             scripts/validate-nginx.sh \
             scripts/ci/verify-release-tag-from-main.sh \
-            scripts/ci/verify-production-approver.sh \
             scripts/ci/check-actions-pinning.sh
           node --check scripts/build-public-release-notes.mjs
           node --check scripts/build-public-deploy-release.mjs
@@ -99,32 +92,11 @@ jobs:
           node scripts/build-public-release-notes.mjs \
             --output .hustleops/public-release-notes.md
 
-  approve-production-release:
-    name: approve-production-release
-    runs-on: ubuntu-24.04
-    needs:
-      - build-release
-    if: github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-
-      - name: Verify production release approver
-        shell: bash
-        env:
-          PRODUCTION_RELEASE_APPROVER: ${{ vars.PRODUCTION_RELEASE_APPROVER }}
-        run: bash scripts/ci/verify-production-approver.sh "$PRODUCTION_RELEASE_APPROVER"
-
   publish-release:
     name: publish-release
     runs-on: ubuntu-24.04
     needs:
       - build-release
-      - approve-production-release
-    if: github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-    environment: production
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -146,14 +118,45 @@ jobs:
             --output .hustleops/public-release-notes.md \
             --github-output "$GITHUB_OUTPUT"
 
+      - name: Verify release GitHub App configuration
+        shell: bash
+        env:
+          RELEASE_APP_CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$RELEASE_APP_CLIENT_ID" ]]; then
+            echo "RELEASE_APP_CLIENT_ID is required to publish GitHub Releases." >&2
+            exit 2
+          fi
+
+          if [[ -z "$RELEASE_APP_PRIVATE_KEY" ]]; then
+            echo "RELEASE_APP_PRIVATE_KEY is required to publish GitHub Releases." >&2
+            exit 2
+          fi
+
+      - name: Create release GitHub App token
+        id: release-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - name: Publish GitHub Release
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
           RELEASE_TITLE: HustleOps Public Deploy ${{ env.RELEASE_TAG }}
           RELEASE_RECORD_FILE: ${{ steps.release.outputs.release_record_file }}
         run: |
           set -euo pipefail
+
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "Release GitHub App token is required to publish GitHub Releases." >&2
+            exit 2
+          fi
 
           release_target="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
           release_assets=(release-manifest.json release-verification.json)

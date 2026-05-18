@@ -10,7 +10,6 @@ const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const verifyTagScript = path.join(projectRoot, "scripts", "ci", "verify-release-tag-from-main.sh");
 const checkPinningScript = path.join(projectRoot, "scripts", "ci", "check-actions-pinning.sh");
-const verifyApproverScript = path.join(projectRoot, "scripts", "ci", "verify-production-approver.sh");
 const deployScript = path.join(projectRoot, "scripts", "deploy.sh");
 
 function execFileWithInput(file, args, options, input) {
@@ -93,26 +92,6 @@ async function writeWorkflow(repoRoot, fileName, workflow) {
 
 async function runPinningCheck(repoRoot) {
   return execFileAsync("bash", [checkPinningScript], { cwd: repoRoot });
-}
-
-async function runApproverCheck(expectedApprover, actor) {
-  return execFileAsync("bash", [verifyApproverScript, expectedApprover], {
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      GITHUB_ACTOR: actor,
-    },
-  });
-}
-
-async function runApproverCheckWithEnv(expectedApprover, env = {}) {
-  return execFileAsync("bash", [verifyApproverScript, expectedApprover], {
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      ...env,
-    },
-  });
 }
 
 async function createFakeDockerBin() {
@@ -268,42 +247,6 @@ test("repository workflow action references are pinned", async () => {
 
   assert.match(stdout, /All external GitHub Actions are pinned to full commit SHAs\./);
   assert.equal(stderr, "");
-});
-
-test("verify-production-approver allows only the expected actor", async () => {
-  const { stdout, stderr } = await runApproverCheck("release-admin", "release-admin");
-
-  assert.match(stdout, /Verified production approver release-admin\./);
-  assert.equal(stderr, "");
-
-  await assert.rejects(
-    runApproverCheck("release-admin", "other-user"),
-    (error) => {
-      assert.equal(error.code, 1);
-      assert.match(error.stderr, /does not match expected approver release-admin\./);
-      return true;
-    },
-  );
-});
-
-test("verify-production-approver fails closed when approver context is missing", async () => {
-  await assert.rejects(
-    runApproverCheck("", "release-admin"),
-    (error) => {
-      assert.equal(error.code, 2);
-      assert.match(error.stderr, /Expected production approver argument is required\./);
-      return true;
-    },
-  );
-
-  await assert.rejects(
-    runApproverCheckWithEnv("release-admin", { GITHUB_ACTOR: "" }),
-    (error) => {
-      assert.equal(error.code, 2);
-      assert.match(error.stderr, /GITHUB_ACTOR is required\./);
-      return true;
-    },
-  );
 });
 
 test("deploy start dry-run prepares Redis data directories before Compose starts services", async () => {
@@ -1104,15 +1047,18 @@ test("pr checks workflow exposes stable required check names", async () => {
   assert.match(workflow, /bash scripts\/ci\/check-actions-pinning\.sh/);
 });
 
-test("release workflow has protected manual publish graph", async () => {
+test("release workflow publishes automatically from verified release tags", async () => {
   const workflow = await readFile(path.join(projectRoot, ".github", "workflows", "release.yml"), "utf8");
 
-  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /on:\n  push:\n    tags:\n      - "v\*"/);
+  assert.doesNotMatch(workflow, /workflow_dispatch:/);
   assert.match(workflow, /\n  verify-release-source:\n\s+name: verify-release-source\n/);
   assert.match(workflow, /\n  build-release:\n\s+name: build-release\n[\s\S]*?needs:\n\s+- verify-release-source\n/);
-  assert.match(workflow, /\n  approve-production-release:\n\s+name: approve-production-release\n[\s\S]*?needs:\n\s+- build-release\n[\s\S]*?if: github\.event_name == 'workflow_dispatch'/);
-  assert.match(workflow, /\n  publish-release:\n\s+name: publish-release\n[\s\S]*?needs:\n\s+- build-release\n\s+- approve-production-release\n[\s\S]*?if: github\.event_name == 'workflow_dispatch'[\s\S]*?permissions:\n\s+contents: write\n[\s\S]*?environment: production/);
-  assert.match(workflow, /PRODUCTION_RELEASE_APPROVER/);
+  assert.doesNotMatch(workflow, /\n  approve-production-release:\n/);
+  assert.match(workflow, /\n  publish-release:\n\s+name: publish-release\n[\s\S]*?needs:\n\s+- build-release\n/);
+  assert.doesNotMatch(workflow, /if: github\.event_name == 'workflow_dispatch'/);
+  assert.doesNotMatch(workflow, /environment: production/);
+  assert.doesNotMatch(workflow, /PRODUCTION_RELEASE_APPROVER/);
 });
 
 test("release workflow isolates tests from the release tag environment", async () => {
@@ -1121,7 +1067,7 @@ test("release workflow isolates tests from the release tag environment", async (
   assert.match(workflow, /RELEASE_TAG='' node --test tests\/\*\.test\.mjs/);
 });
 
-test("only publish-release workflow job requests contents write", async () => {
+test("workflows do not grant content writes to the default GitHub token", async () => {
   const workflowDir = path.join(projectRoot, ".github", "workflows");
   const workflowFiles = (await readdir(workflowDir)).filter((fileName) => /\.(ya?ml)$/.test(fileName));
   const writeGrants = [];
@@ -1145,7 +1091,7 @@ test("only publish-release workflow job requests contents write", async () => {
     }
   }
 
-  assert.deepEqual(writeGrants, [{ fileName: "release.yml", job: "publish-release" }]);
+  assert.deepEqual(writeGrants, []);
 });
 
 test("workflow job display names are stable lowercase kebab-case", async () => {
@@ -1169,21 +1115,103 @@ test("workflow job display names are stable lowercase kebab-case", async () => {
   }
 });
 
-test("create-release-tag workflow uses approver and GitHub App gates", async () => {
+test("create-release-tag workflow uses GitHub App tag creation without an approver gate", async () => {
   const workflow = await readFile(path.join(projectRoot, ".github", "workflows", "create-release-tag.yml"), "utf8");
 
   assert.match(workflow, /permissions:\n  contents: read/);
   assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /RELEASE_TAG_APPROVER/);
+  assert.doesNotMatch(workflow, /RELEASE_TAG_APPROVER/);
+  assert.doesNotMatch(workflow, /Verify release tag approver/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.match(workflow, /RELEASE_TAG_APP_ID/);
-  assert.match(workflow, /RELEASE_TAG_APP_PRIVATE_KEY/);
+  assert.match(workflow, /RELEASE_APP_CLIENT_ID/);
+  assert.match(workflow, /RELEASE_APP_PRIVATE_KEY/);
+  assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_CLIENT_ID \}\}/);
+  assert.doesNotMatch(workflow, /^\s+app-id:/m);
   assert.match(workflow, /permission-contents: write/);
   assert.match(workflow, /git tag -a "\$VERSION" -m "Release \$VERSION"/);
   assert.match(workflow, /RELEASE_TAG_TOKEN: \$\{\{ steps\.release-tag-token\.outputs\.token \}\}/);
   assert.match(workflow, /x-access-token:\$\{RELEASE_TAG_TOKEN\}@github\.com/);
+  assert.doesNotMatch(workflow, /RELEASE_APP_ID/);
+  assert.doesNotMatch(workflow, /RELEASE_TAG_APP_ID/);
+  assert.doesNotMatch(workflow, /RELEASE_TAG_APP_PRIVATE_KEY/);
   assert.doesNotMatch(workflow, /RELEASE_TAG_DEPLOY_KEY/);
   assert.doesNotMatch(workflow, /permissions:\n  contents: write/);
+});
+
+test("release workflow publishes with the release GitHub App token", async () => {
+  const workflow = await readFile(path.join(projectRoot, ".github", "workflows", "release.yml"), "utf8");
+
+  assert.match(workflow, /Verify release GitHub App configuration/);
+  assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
+  assert.match(workflow, /RELEASE_APP_CLIENT_ID/);
+  assert.match(workflow, /RELEASE_APP_PRIVATE_KEY/);
+  assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_CLIENT_ID \}\}/);
+  assert.doesNotMatch(workflow, /^\s+app-id:/m);
+  assert.match(workflow, /permission-contents: write/);
+  assert.match(workflow, /GH_TOKEN: \$\{\{ steps\.release-token\.outputs\.token \}\}/);
+  assert.doesNotMatch(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.doesNotMatch(workflow, /RELEASE_APP_ID/);
+  assert.doesNotMatch(workflow, /RELEASE_TAG_APP_ID/);
+  assert.doesNotMatch(workflow, /RELEASE_TAG_APP_PRIVATE_KEY/);
+  assert.doesNotMatch(workflow, /permissions:\n\s+contents: write/);
+});
+
+test("update-from-contract workflow trusts the canonical source app release identity", async () => {
+  const workflow = await readFile(path.join(projectRoot, ".github", "workflows", "update-from-contract.yml"), "utf8");
+
+  assert.match(
+    workflow,
+    /CONTRACT_CERTIFICATE_IDENTITY_PATTERN: https:\/\/github\.com\/HustleOps\/hustleops-app\/\.github\/workflows\/release\.yml@refs\/tags\/v\*/,
+  );
+  assert.match(
+    workflow,
+    /CONTRACT_CERTIFICATE_IDENTITY_REGEXP: \^https:\/\/github\\\.com\/HustleOps\/hustleops-app\/\\\.github\/workflows\/release\\\.yml@refs\/tags\/v\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+\$/,
+  );
+  assert.doesNotMatch(workflow, /HustleOps\/HustleOps\/\.github\/workflows\/release\.yml/);
+});
+
+test("update-from-contract workflow pushes automation PRs with the release GitHub App token", async () => {
+  const workflow = await readFile(path.join(projectRoot, ".github", "workflows", "update-from-contract.yml"), "utf8");
+
+  assert.match(
+    workflow,
+    /- name: Detect public deploy changes[\s\S]*?has_changes=false[\s\S]*?echo "has-changes=\$\{has_changes\}"[\s\S]*?- name: Verify release GitHub App configuration for public deploy updates[\s\S]*?if: steps\.public-deploy-changes\.outputs\.has-changes == 'true'[\s\S]*?- name: Create release GitHub App token for public deploy updates/,
+  );
+  assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
+  assert.match(workflow, /RELEASE_APP_CLIENT_ID/);
+  assert.doesNotMatch(workflow, /RELEASE_APP_ID/);
+  assert.match(workflow, /RELEASE_APP_PRIVATE_KEY/);
+  assert.match(workflow, /\n    permissions:\n      contents: read\n/);
+  assert.doesNotMatch(workflow, /\n      pull-requests: write\n/);
+  assert.match(workflow, /client-id: \$\{\{ vars\.RELEASE_APP_CLIENT_ID \}\}/);
+  assert.doesNotMatch(workflow, /^\s+app-id:/m);
+  assert.match(workflow, /permission-contents: write/);
+  assert.match(workflow, /permission-pull-requests: write/);
+  assert.match(workflow, /APP_SLUG: \$\{\{ steps\.public-deploy-update-token\.outputs\.app-slug \}\}/);
+  assert.match(workflow, /BRANCH_PUSH_TOKEN: \$\{\{ steps\.public-deploy-update-token\.outputs\.token \}\}/);
+  assert.match(workflow, /GH_TOKEN: \$\{\{ steps\.public-deploy-update-token\.outputs\.token \}\}/);
+  assert.doesNotMatch(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(workflow, /x-access-token:\$\{BRANCH_PUSH_TOKEN\}@github\.com\/\$\{REPOSITORY\}\.git/);
+  assert.match(workflow, /git config user\.name "\$COMMITTER_NAME"/);
+  assert.doesNotMatch(workflow, /PUBLIC_DEPLOY_UPDATE_APP_ID/);
+  assert.doesNotMatch(workflow, /PUBLIC_DEPLOY_UPDATE_APP_PRIVATE_KEY/);
+  assert.doesNotMatch(workflow, /PUBLIC_DEPLOY_UPDATE_DEPLOY_KEY/);
+  assert.doesNotMatch(workflow, /ssh-keyscan|GIT_SSH_COMMAND|public-deploy-update-deploy-key|git@github\.com/);
+});
+
+test("workflows do not call the removed production approver helper", async () => {
+  const workflowDir = path.join(projectRoot, ".github", "workflows");
+  const workflowFiles = (await readdir(workflowDir)).filter((fileName) => /\.(ya?ml)$/.test(fileName));
+
+  for (const fileName of workflowFiles) {
+    const workflow = await readFile(path.join(workflowDir, fileName), "utf8");
+
+    assert.doesNotMatch(
+      workflow,
+      /verify-production-approver\.sh|PRODUCTION_RELEASE_APPROVER|PRODUCTION_DEPLOYMENT_APPROVER|RELEASE_TAG_APPROVER/,
+      `${fileName} should not reference removed approver controls`,
+    );
+  }
 });
 
 test("required workflow files expose stable names and jobs", async () => {
@@ -1204,8 +1232,9 @@ test("required workflow files expose stable names and jobs", async () => {
   assert.match(release, /^name: Release$/m);
   assert.match(release, /\n  verify-release-source:\n\s+name: verify-release-source\n/);
   assert.match(release, /\n  build-release:\n\s+name: build-release\n/);
-  assert.match(release, /\n  approve-production-release:\n\s+name: approve-production-release\n/);
+  assert.doesNotMatch(release, /\n  approve-production-release:\n/);
   assert.match(release, /\n  publish-release:\n\s+name: publish-release\n/);
+  assert.doesNotMatch(release, /environment: production/);
 
   assert.match(rulesetAudit, /^name: Ruleset Audit$/m);
   assert.match(rulesetAudit, /\n  audit-rulesets:\n\s+name: audit-rulesets\n/);
@@ -1214,8 +1243,8 @@ test("required workflow files expose stable names and jobs", async () => {
 
   assert.match(deploy, /^name: Deploy App$/m);
   assert.match(deploy, /\n  build:\n\s+name: build\n/);
-  assert.match(deploy, /\n  approve-production-deploy:\n\s+name: approve-production-deploy\n/);
+  assert.doesNotMatch(deploy, /\n  approve-production-deploy:\n/);
   assert.match(deploy, /\n  deploy:\n\s+name: deploy\n/);
-  assert.match(deploy, /environment: production/);
-  assert.match(deploy, /PRODUCTION_DEPLOYMENT_APPROVER/);
+  assert.doesNotMatch(deploy, /environment: production/);
+  assert.doesNotMatch(deploy, /PRODUCTION_DEPLOYMENT_APPROVER/);
 });

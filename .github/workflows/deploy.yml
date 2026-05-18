@@ -76,7 +76,6 @@ jobs:
             scripts/deploy.sh \
             scripts/validate-nginx.sh \
             scripts/ci/verify-release-tag-from-main.sh \
-            scripts/ci/verify-production-approver.sh \
             scripts/ci/check-actions-pinning.sh
           shellcheck \
             scripts/preflight.sh \
@@ -85,7 +84,6 @@ jobs:
             scripts/deploy.sh \
             scripts/validate-nginx.sh \
             scripts/ci/verify-release-tag-from-main.sh \
-            scripts/ci/verify-production-approver.sh \
             scripts/ci/check-actions-pinning.sh
           node --check scripts/build-public-release-notes.mjs
           node --check scripts/build-public-deploy-release.mjs
@@ -123,21 +121,6 @@ jobs:
             --dry-run \
             --yes
 
-  approve-production-deploy:
-    name: approve-production-deploy
-    runs-on: ubuntu-24.04
-    needs:
-      - build
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-
-      - name: Verify production deployment approver
-        shell: bash
-        env:
-          PRODUCTION_DEPLOYMENT_APPROVER: ${{ vars.PRODUCTION_DEPLOYMENT_APPROVER }}
-        run: bash scripts/ci/verify-production-approver.sh "$PRODUCTION_DEPLOYMENT_APPROVER"
-
   deploy:
     name: deploy
     runs-on:
@@ -145,8 +128,6 @@ jobs:
       - production
     needs:
       - build
-      - approve-production-deploy
-    environment: production
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd

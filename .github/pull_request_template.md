@@ -26,7 +26,7 @@
 
 - [ ] No deployment impact
 - [ ] Requires release tag
-- [ ] Requires production deployment approval
+- [ ] Requires production self-hosted runner deployment
 - [ ] Requires rollback plan
 
 ## Notes for reviewers

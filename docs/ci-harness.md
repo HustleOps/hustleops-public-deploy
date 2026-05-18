@@ -30,10 +30,9 @@ Jobs:
 
 - `verify-release-source`
 - `build-release`
-- `approve-production-release`
 - `publish-release`
 
-`build-release` depends on `verify-release-source`. `approve-production-release` depends on `build-release` and runs only for manual dispatch. `publish-release` depends on both `build-release` and `approve-production-release`, runs only for manual dispatch, has `contents: write`, and targets the `production` environment. All other release jobs keep `contents: read`.
+`build-release` depends on `verify-release-source`. `publish-release` depends on `build-release` and runs automatically on verified `v*` tag pushes. The workflow keeps the default `GITHUB_TOKEN` read-only; only the release GitHub App installation token receives `contents: write` for publication.
 
 ## Release Tag Verification
 
@@ -47,9 +46,9 @@ unchecked feature branch -> manual v1.2.3 tag -> release workflow -> production 
 
 ## Release Tag Creation
 
-`.github/workflows/create-release-tag.yml` is the preferred release tag creation path. It accepts `version`, validates `vMAJOR.MINOR.PATCH`, checks out `main` with persisted credentials disabled, verifies `RELEASE_TAG_APPROVER`, rejects existing tags, creates an annotated tag, and pushes it with a dedicated release-tag GitHub App token. The workflow keeps `contents: read` for the default `GITHUB_TOKEN`; only the App installation token receives `contents: write` for the tag push.
+`.github/workflows/create-release-tag.yml` is the preferred release tag creation path. It accepts `version`, validates `vMAJOR.MINOR.PATCH`, checks out `main` with persisted credentials disabled, rejects existing tags, creates an annotated tag, and pushes it with the release GitHub App token. The workflow keeps `contents: read` for the default `GITHUB_TOKEN`; only the App installation token receives `contents: write` for the tag push.
 
-For repositories with protected `v*` tag creation, configure `RELEASE_TAG_APP_ID` as a repo or org variable and `RELEASE_TAG_APP_PRIVATE_KEY` as a repository secret for a dedicated GitHub App that is allowed to create release tags. Configure `RELEASE_TAG_APPROVER` as a repo or org variable containing the GitHub username allowed to request release tag creation.
+For repositories with protected `v*` tag creation and GitHub Release publication, configure `RELEASE_APP_CLIENT_ID` as a repo or org variable containing the release GitHub App Client ID and `RELEASE_APP_PRIVATE_KEY` as a repository secret for the release GitHub App.
 
 ## GitHub Actions Hardening
 
@@ -67,13 +66,11 @@ This is a read-only audit/reporting check. It does not replace configuring branc
 
 ## Production Environment Protection
 
-Configure the `production` environment with required reviewers, prevent self-review, and restrict deployment branches/tags to `main` and/or `v*`. Keep production secrets only in this environment. Pull request workflows must not receive production secrets and must not deploy.
-
-Configure `PRODUCTION_RELEASE_APPROVER` and `PRODUCTION_DEPLOYMENT_APPROVER` as repo or org variables. Manual release publication and manual deployment fail closed when the relevant variable is missing or does not match `GITHUB_ACTOR`.
+The workflows do not attach release publication or deployment to a GitHub deployment environment. Production release publication is automatic after a verified `v*` tag push and successful release build. Manual production deployment still requires a trusted self-hosted runner labeled `production`, but no GitHub environment approval is used.
 
 ## Production Deployment
 
-`.github/workflows/deploy.yml` is manual-only. It builds and validates the deploy bundle first, verifies `PRODUCTION_DEPLOYMENT_APPROVER`, then runs the production deploy job on a self-hosted runner labeled `production` and attached to the `production` environment.
+`.github/workflows/deploy.yml` is manual-only. It builds and validates the deploy bundle first, then runs the production deploy job on a self-hosted runner labeled `production`.
 
 The deploy job uses the real operator command:
 
@@ -81,7 +78,7 @@ The deploy job uses the real operator command:
 ./scripts/deploy.sh update --env-file "$PRODUCTION_ENV_FILE" --yes
 ```
 
-Use `release_ref=main` only for the protected branch head, or use a protected `vMAJOR.MINOR.PATCH` tag that is reachable from `origin/main`. Keep the production env file and production runtime secrets on the protected environment or target host, not in pull request workflows.
+Use `release_ref=main` only for the protected branch head, or use a protected `vMAJOR.MINOR.PATCH` tag that is reachable from `origin/main`. Keep the production env file and production runtime secrets on the target host or in repository/organization secret stores selected for the trusted runner model, not in pull request workflows.
 
 If cloud deployment is added later, prefer OIDC with:
 
@@ -95,7 +92,11 @@ permissions:
 
 - Do not use production secrets in `pull_request` or `pull_request_target` workflows.
 - Do not expose production secrets to untrusted branches or forked PRs.
-- Put production secrets only in the protected `production` environment.
+- Keep production runtime secrets on the target host or in repository/organization secret stores selected for the runner model.
 - Keep release verification and build jobs free of production secrets.
-- Keep release-tag GitHub App private keys separate from production runtime secrets.
-- Configure `PUBLIC_DEPLOY_UPDATE_DEPLOY_KEY` only if the manual `Update From Release Contract` workflow should be able to push automation update branches.
+- Keep release GitHub App private keys separate from production runtime secrets.
+- Configure `RELEASE_APP_CLIENT_ID` as a repository or organization variable containing the release GitHub App Client ID for `Create Release Tag`, `Release`, and `Update From Release Contract`, and keep `RELEASE_APP_PRIVATE_KEY` as the shared release GitHub App private-key secret.
+- Grant the release GitHub App `contents: write` so release tag creation, GitHub Release publication, and public deploy update branch pushes can request content-write installation tokens.
+- Grant the release GitHub App `pull requests: write` so `Update From Release Contract` can open or update the public deploy update PR without depending on the repository-wide GitHub Actions PR creation setting.
+- `Update From Release Contract` keeps the workflow-scoped `GITHUB_TOKEN` read-only and uses the release GitHub App token for both the automation branch push and PR list/create/edit operations.
+- Do not configure `PUBLIC_DEPLOY_UPDATE_DEPLOY_KEY`, `PUBLIC_DEPLOY_UPDATE_APP_ID`, or `PUBLIC_DEPLOY_UPDATE_APP_PRIVATE_KEY`; the update workflow uses the release GitHub App instead.
