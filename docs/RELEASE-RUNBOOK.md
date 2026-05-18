@@ -8,7 +8,7 @@
 
 ## What A Release Updates
 
-1. Runtime image references for backend and frontend.
+1. Runtime image references for backend, frontend, and migration services in `docker-compose.prod.yml`.
 2. The deploy payload files in this repository.
 3. Release metadata such as `release-manifest.json`, `deployment/release-trigger.txt`, and `releases/<tag>.json`.
 4. A GitHub Release automatically after the update PR lands on `main` and a protected `v*` tag is created, with `releases/<tag>.json` attached as the source app contract.
@@ -40,7 +40,7 @@ deterministic test cert fixtures under `.hustleops/nginx/certs/`.
 
 ## Rollback
 
-- Roll back to a prior release by restoring the earlier image references and release metadata.
+- Roll back to a prior release by restoring the earlier `docker-compose.prod.yml` image references and release metadata.
 - Use `releases/<tag>.json`, or the matching public deploy GitHub Release asset, as the immutable record for the previous rollout.
 - Re-run validation before bringing the stack back up.
 - Do not move or delete existing release tags. Rollbacks should create a new reviewed repository state and release tag when history needs to change.

@@ -659,6 +659,94 @@ test("core nginx publishes HTTPS and mounts TLS files from env paths", async () 
   );
 });
 
+test("runtime application images are pinned directly in Compose", async () => {
+  const envExample = await readFile(path.join(projectRoot, ".env.example"), "utf8");
+  const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
+  const verification = JSON.parse(await readFile(path.join(projectRoot, "release-verification.json"), "utf8"));
+
+  assert.doesNotMatch(envExample, /^HUSTLEOPS_BACKEND_IMAGE=/m);
+  assert.doesNotMatch(envExample, /^HUSTLEOPS_FRONTEND_IMAGE=/m);
+  assert.doesNotMatch(envExample, /^HUSTLEOPS_BACKEND_MIGRATION_IMAGE=/m);
+
+  assert.ok(composeServiceBlock(compose, "backend").includes(`image: ${verification.images.backend.immutableRef}`));
+  assert.ok(composeServiceBlock(compose, "frontend").includes(`image: ${verification.images.frontend.immutableRef}`));
+  assert.ok(composeServiceBlock(compose, "backend-migrate").includes(`image: ${verification.images.migration.immutableRef}`));
+  assert.ok(composeServiceBlock(compose, "backend-bootstrap").includes(`image: ${verification.images.migration.immutableRef}`));
+});
+
+test("release metadata validation accepts env files without runtime image keys", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-compose-image-metadata-"));
+  const generatedEnv = path.join(tmpRoot, "ci.env");
+  const filteredEnv = path.join(tmpRoot, "ci-without-images.env");
+  const signaturePlan = path.join(tmpRoot, "image-signatures.tsv");
+
+  await execFileAsync("node", [path.join(projectRoot, "scripts", "make-ci-env.mjs"), "--output", generatedEnv], {
+    cwd: projectRoot,
+  });
+
+  const withoutImageKeys = (await readFile(generatedEnv, "utf8"))
+    .split("\n")
+    .filter((line) => !/^HUSTLEOPS_(BACKEND_IMAGE|FRONTEND_IMAGE|BACKEND_MIGRATION_IMAGE)=/.test(line))
+    .join("\n");
+  await writeFile(filteredEnv, `${withoutImageKeys.replace(/\n*$/, "")}\n`);
+
+  const { stdout, stderr } = await execFileAsync(
+    "node",
+    [
+      path.join(projectRoot, "scripts", "validate-release-metadata.mjs"),
+      "--env-file",
+      filteredEnv,
+      "--compose-file",
+      path.join(projectRoot, "docker-compose.prod.yml"),
+      "--signature-plan-file",
+      signaturePlan,
+    ],
+    { cwd: projectRoot },
+  );
+
+  assert.equal(stderr, "");
+  assert.match(stdout, /Release metadata validation passed/);
+  assert.match(await readFile(signaturePlan, "utf8"), /ghcr\.io\/hustleops\/hustleops-public-backend:0\.2\.5@sha256:/);
+});
+
+test("release metadata validation rejects a stale backend-bootstrap image", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-bootstrap-image-metadata-"));
+  const generatedEnv = path.join(tmpRoot, "ci.env");
+  const composeFile = path.join(tmpRoot, "docker-compose.prod.yml");
+
+  await execFileAsync("node", [path.join(projectRoot, "scripts", "make-ci-env.mjs"), "--output", generatedEnv], {
+    cwd: projectRoot,
+  });
+
+  const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
+  const staleBootstrapCompose = compose.replace(
+    /(^  backend-bootstrap:\n[\s\S]*?^    image:\s*).+$/m,
+    "$1ghcr.io/hustleops/hustleops-public-backend-migrate:0.0.0@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  );
+  await writeFile(composeFile, staleBootstrapCompose);
+
+  await assert.rejects(
+    execFileAsync(
+      "node",
+      [
+        path.join(projectRoot, "scripts", "validate-release-metadata.mjs"),
+        "--env-file",
+        generatedEnv,
+        "--compose-file",
+        composeFile,
+      ],
+      { cwd: projectRoot },
+    ),
+    (error) => {
+      assert.match(
+        error.stderr,
+        /service backend-bootstrap image must match release-verification\.json images\.migration\.immutableRef/,
+      );
+      return true;
+    },
+  );
+});
+
 test("OpenSearch and Dashboards services are grouped under the ancillary profile", async () => {
   const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
   const backend = composeServiceBlock(compose, "backend");
@@ -889,7 +977,8 @@ test("preflight debug leaves docker pull progress visible", async () => {
 
   assert.match(preflight, /PREFLIGHT_VERBOSITY=1/);
   assert.match(preflight, /--debug\)/);
-  assert.match(preflight, /pull_image "\$HUSTLEOPS_BACKEND_IMAGE"/);
+  assert.match(preflight, /while IFS=\$'\\t' read -r image_ref certificate_identity issuer/);
+  assert.match(preflight, /pull_image "\$image_ref"/);
   assert.match(preflight, /docker pull --platform linux\/amd64 "\$image_ref"\n/);
   assert.match(preflight, /docker pull --platform linux\/amd64 "\$image_ref" >\/dev\/null/);
 });
@@ -1173,6 +1262,8 @@ test("update-from-contract workflow trusts the canonical source app release iden
 test("update-from-contract workflow pushes automation PRs with the release GitHub App token", async () => {
   const workflow = await readFile(path.join(projectRoot, ".github", "workflows", "update-from-contract.yml"), "utf8");
 
+  assert.match(workflow, /git status --porcelain -- \.env\.example docker-compose\.prod\.yml deployment release-manifest\.json release-verification\.json releases/);
+  assert.match(workflow, /git add \.env\.example docker-compose\.prod\.yml deployment release-manifest\.json release-verification\.json releases/);
   assert.match(
     workflow,
     /- name: Detect public deploy changes[\s\S]*?has_changes=false[\s\S]*?echo "has-changes=\$\{has_changes\}"[\s\S]*?- name: Verify release GitHub App configuration for public deploy updates[\s\S]*?if: steps\.public-deploy-changes\.outputs\.has-changes == 'true'[\s\S]*?- name: Create release GitHub App token for public deploy updates/,

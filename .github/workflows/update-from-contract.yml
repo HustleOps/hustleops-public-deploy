@@ -154,7 +154,7 @@ jobs:
           tag="v${version}"
           branch_name="automation/hustleops-${tag}-contract-update"
 
-          if [[ -z "$(git status --porcelain -- .env.example deployment release-manifest.json release-verification.json releases)" ]]; then
+          if [[ -z "$(git status --porcelain -- .env.example docker-compose.prod.yml deployment release-manifest.json release-verification.json releases)" ]]; then
             has_changes=false
             echo "No public deploy changes generated for ${tag}."
           else
@@ -242,7 +242,7 @@ jobs:
           git config user.name "$COMMITTER_NAME"
           git config user.email "$COMMITTER_EMAIL"
           git checkout -B "$BRANCH_NAME"
-          git add .env.example deployment release-manifest.json release-verification.json releases
+          git add .env.example docker-compose.prod.yml deployment release-manifest.json release-verification.json releases
           git commit -m "chore(release): update public deploy for ${TAG}"
 
           remote_branch="refs/heads/${BRANCH_NAME}"

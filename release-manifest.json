@@ -71,6 +71,7 @@
     "deployment": {
       "envFilePath": ".env.example",
       "composePath": "docker-compose.prod.yml",
+      "imageRefSource": "docker-compose.prod.yml service image fields",
       "nginxConfigPath": "nginx/nginx.conf",
       "nginxAncillaryConfigPath": "nginx/nginx.ancillary.conf",
       "nginxSecurityHeadersPath": "nginx/security-headers.conf",
@@ -82,7 +83,7 @@
     "migration": {
       "service": "backend-migrate",
       "profile": "migration",
-      "envVar": "HUSTLEOPS_BACKEND_MIGRATION_IMAGE",
+      "imageSource": "docker-compose.prod.yml services.backend-migrate.image",
       "databaseUrlEnvVar": "DATABASE_URL",
       "databaseUrlSource": ".env POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DB values rendered into docker-compose.prod.yml service environment",
       "timeoutSeconds": 600,
