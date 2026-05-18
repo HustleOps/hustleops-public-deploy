@@ -761,6 +761,17 @@ test("OpenSearch and Dashboards services are grouped under the ancillary profile
   assert.match(nginxAncillary, /depends_on:[\s\S]*opensearch-dashboards:\n        condition: service_started/);
 });
 
+test("OpenSearch Dashboards enables data sources, workspaces, Explore, and workspace settings", async () => {
+  const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
+  const dashboards = composeServiceBlock(compose, "opensearch-dashboards");
+
+  assert.match(dashboards, /DATA_SOURCE_ENABLED: "true"/);
+  assert.match(dashboards, /WORKSPACE_ENABLED: "true"/);
+  assert.match(dashboards, /EXPLORE_ENABLED: "true"/);
+  assert.match(dashboards, /OPENSEARCH_SECURITY_MULTITENANCY_ENABLED: "false"/);
+  assert.match(dashboards, /"UISETTINGS_OVERRIDES_HOME:USENEWHOMEPAGE": "true"/);
+});
+
 test("ancillary proxy waits for n8n readiness before serving traffic", async () => {
   const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
 
