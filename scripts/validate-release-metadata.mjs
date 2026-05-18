@@ -7,9 +7,9 @@ const scriptDir = import.meta.dirname;
 const projectRoot = path.resolve(scriptDir, "..");
 const IMAGE_KEYS = ["backend", "frontend", "migration"];
 const COMPOSE_IMAGE_SERVICES = {
-  backend: "backend",
-  frontend: "frontend",
-  migration: "backend-migrate",
+  backend: ["backend"],
+  frontend: ["frontend"],
+  migration: ["backend-migrate", "backend-bootstrap"],
 };
 const REQUIRED_ENV_KEYS = [
   "HUSTLEOPS_RELEASE_TAG",
@@ -176,9 +176,14 @@ async function readComposeImages(filePath) {
   const compose = await readFile(filePath, "utf8");
 
   return Object.fromEntries(
-    Object.entries(COMPOSE_IMAGE_SERVICES).map(([imageKey, serviceName]) => [
+    Object.entries(COMPOSE_IMAGE_SERVICES).map(([imageKey, serviceNames]) => [
       imageKey,
-      readComposeImageRef(compose, serviceName, filePath),
+      Object.fromEntries(
+        serviceNames.map((serviceName) => [
+          serviceName,
+          readComposeImageRef(compose, serviceName, filePath),
+        ]),
+      ),
     ]),
   );
 }
@@ -233,10 +238,7 @@ function assertImageMetadata({ composeImages, manifest, verification, version })
   for (const imageKey of IMAGE_KEYS) {
     const manifestImage = manifest.images?.[imageKey];
     const verificationImage = verification.images?.[imageKey];
-    const composeImage = requireString(
-      composeImages[imageKey],
-      `docker-compose.prod.yml service ${COMPOSE_IMAGE_SERVICES[imageKey]} image`,
-    );
+    const composeServiceImages = composeImages[imageKey] ?? {};
 
     if (!manifestImage) {
       throw new Error(`release-manifest.json is missing images.${imageKey}.`);
@@ -266,11 +268,18 @@ function assertImageMetadata({ composeImages, manifest, verification, version })
       expectedImmutableRef,
       `release-verification.json images.${imageKey}.immutableRef must match release-manifest.json image ref, version, and digest`,
     );
-    assertEqual(
-      composeImage,
-      verificationImmutableRef,
-      `docker-compose.prod.yml service ${COMPOSE_IMAGE_SERVICES[imageKey]} image must match release-verification.json images.${imageKey}.immutableRef`,
-    );
+    for (const serviceName of COMPOSE_IMAGE_SERVICES[imageKey]) {
+      const composeImage = requireString(
+        composeServiceImages[serviceName],
+        `docker-compose.prod.yml service ${serviceName} image`,
+      );
+
+      assertEqual(
+        composeImage,
+        verificationImmutableRef,
+        `docker-compose.prod.yml service ${serviceName} image must match release-verification.json images.${imageKey}.immutableRef`,
+      );
+    }
 
     const signature = verificationImage.verification?.signature ?? {};
     assertEqual(

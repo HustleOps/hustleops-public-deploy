@@ -709,6 +709,44 @@ test("release metadata validation accepts env files without runtime image keys",
   assert.match(await readFile(signaturePlan, "utf8"), /ghcr\.io\/hustleops\/hustleops-public-backend:0\.2\.5@sha256:/);
 });
 
+test("release metadata validation rejects a stale backend-bootstrap image", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-bootstrap-image-metadata-"));
+  const generatedEnv = path.join(tmpRoot, "ci.env");
+  const composeFile = path.join(tmpRoot, "docker-compose.prod.yml");
+
+  await execFileAsync("node", [path.join(projectRoot, "scripts", "make-ci-env.mjs"), "--output", generatedEnv], {
+    cwd: projectRoot,
+  });
+
+  const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
+  const staleBootstrapCompose = compose.replace(
+    /(^  backend-bootstrap:\n[\s\S]*?^    image:\s*).+$/m,
+    "$1ghcr.io/hustleops/hustleops-public-backend-migrate:0.0.0@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  );
+  await writeFile(composeFile, staleBootstrapCompose);
+
+  await assert.rejects(
+    execFileAsync(
+      "node",
+      [
+        path.join(projectRoot, "scripts", "validate-release-metadata.mjs"),
+        "--env-file",
+        generatedEnv,
+        "--compose-file",
+        composeFile,
+      ],
+      { cwd: projectRoot },
+    ),
+    (error) => {
+      assert.match(
+        error.stderr,
+        /service backend-bootstrap image must match release-verification\.json images\.migration\.immutableRef/,
+      );
+      return true;
+    },
+  );
+});
+
 test("OpenSearch and Dashboards services are grouped under the ancillary profile", async () => {
   const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
   const backend = composeServiceBlock(compose, "backend");
