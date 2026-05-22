@@ -284,6 +284,39 @@ test("deploy start dry-run prepares Redis data directories before Compose starts
   );
 });
 
+test("deploy start dry-run prepares backend uploads directory before Compose starts services", async () => {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-uploads-"));
+  const envFile = path.join(tmpRoot, ".env");
+  const fakeDockerBin = await createFakeDockerBin();
+
+  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
+
+  const { stdout, stderr } = await execFileAsync(
+    "bash",
+    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes", "--skip-n8n", "--skip-ancillary"],
+    {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        PATH: `${fakeDockerBin}:${process.env.PATH}`,
+      },
+    },
+  );
+
+  assert.equal(stderr, "");
+  assert.match(stdout, /DRY RUN: mkdir -p .*data\/uploads/);
+  assert.match(stdout, /DRY RUN: rm -f .*data\/uploads\/\.gitkeep/);
+  assert.match(stdout, /DRY RUN: chown -R 1000:1000 .*data\/uploads/);
+  assert.ok(
+    stdout.indexOf("data/uploads/.gitkeep") < stdout.indexOf("up -d backend frontend nginx"),
+    "backend uploads directory cleanup should run before core services start",
+  );
+  assert.ok(
+    stdout.indexOf("chown -R 1000:1000") < stdout.indexOf("up -d backend frontend nginx"),
+    "backend uploads ownership should be fixed before core services start",
+  );
+});
+
 test("deploy start dry-run prepares OpenSearch data directory with ancillary services", async () => {
   const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-opensearch-"));
   const envFile = path.join(tmpRoot, ".env");

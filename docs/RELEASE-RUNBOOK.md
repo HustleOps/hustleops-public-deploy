@@ -34,7 +34,7 @@ deterministic test cert fixtures under `.hustleops/nginx/certs/`.
 
 - `data/postgres/` stores HustleOps PostgreSQL data on the host; Postgres 18 keeps the active cluster under `data/postgres/18/docker/`.
 - `data/n8n/postgres/` stores n8n PostgreSQL data on the host; Postgres 18 keeps the active cluster under `data/n8n/postgres/18/docker/`.
-- `data/uploads/` stores backend uploads, screenshots, and chat files on the host.
+- `data/uploads/` stores backend uploads, screenshots, and chat files on the host; `deploy.sh` prepares it for the backend container user before core services start.
 - Redis, OpenSearch, n8n state, n8n PostgreSQL, and n8n Redis use host bind mounts under `data/`.
 - If PostgreSQL cluster files exist directly under `data/postgres/`, `data/postgres/pgdata/`, or `data/n8n/postgres/`, stop and migrate or upgrade them before starting the Postgres 18 services.
 

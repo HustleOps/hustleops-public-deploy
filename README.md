@@ -28,7 +28,7 @@ The HustleOps GHCR images are public and can be pulled without signing in.
 
 4. Place production TLS files at `NGINX_TLS_CERT_PATH` and `NGINX_TLS_KEY_PATH`, or leave the defaults and allow setup to generate a self-signed certificate for lab/internal use when prompted. The same certificate is mounted into the app and ancillary nginx proxies. Generated certificates are written under `nginx/certs/`, which is ignored by git.
 
-5. Confirm the host directories under `data/` and `logs/` are writable by the matching containers before first start. Logs continue to use Docker stdout by default; use `logs/<service>/` only when file logging is intentionally enabled and shipped off-host.
+5. Confirm the host directories under `data/` and `logs/` are writable by the matching containers before first start. The deploy script prepares backend uploads, n8n app data, and OpenSearch data ownership automatically. Logs continue to use Docker stdout by default; use `logs/<service>/` only when file logging is intentionally enabled and shipped off-host.
 
 6. Run the setup flow:
 
