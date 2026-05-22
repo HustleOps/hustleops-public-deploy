@@ -874,6 +874,20 @@ test("core nginx redirects HTTP and serves the app over HTTPS", async () => {
   assert.match(nginx, /location \/socket\.io\/ \{[\s\S]*proxy_pass http:\/\/backend:3000\/socket\.io\/;/);
 });
 
+test("public frontend CSP permits Google Fonts stylesheet and font files", async () => {
+  const securityHeaders = await readFile(
+    path.join(projectRoot, "nginx", "security-headers.conf"),
+    "utf8",
+  );
+
+  assert.match(
+    securityHeaders,
+    /style-src 'self' 'unsafe-inline' https:\/\/fonts\.googleapis\.com/,
+  );
+  assert.match(securityHeaders, /font-src 'self' https:\/\/fonts\.gstatic\.com/);
+  assert.match(securityHeaders, /script-src 'self';/);
+});
+
 test("postgres 18 services mount persistent parent directories", async () => {
   const compose = await readFile(path.join(projectRoot, "docker-compose.prod.yml"), "utf8");
 
