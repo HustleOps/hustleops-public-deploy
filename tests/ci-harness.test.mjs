@@ -801,6 +801,8 @@ test("deploy script help documents start and restart stack commands", async () =
   assert.match(deploy, /\{setup\|update\|start\|restart\|stop\|down\|status\|preflight\|backup\|migrate\|bootstrap\}/);
   assert.match(deploy, /start\s+Start stack if it was previously stopped or down/);
   assert.match(deploy, /restart\s+Restart stack/);
+  assert.match(deploy, /start[\s\S]*requires current release migration marker/);
+  assert.match(deploy, /restart[\s\S]*requires current release migration marker/);
 });
 
 test("ancillary ports default to HTTPS external binds and mount TLS files", async () => {
@@ -1259,12 +1261,17 @@ test("operator docs describe default ancillary exposure and debug behavior", asy
   assert.match(readme, /Use `--skip-ancillary`/);
   assert.match(readme, /`--debug` leaves Docker image pull progress visible/);
   assert.match(readme, /After startup, `deploy\.sh` prints service access addresses/);
+  assert.match(readme, /After pulling a newer public deploy repository release, run:[\s\S]*deploy\.sh update/);
+  assert.match(readme, /`start` requires the current release migration marker/);
+  assert.match(readme, /staged operations that should not start services[\s\S]*deploy\.sh update[\s\S]*--no-start/);
+  assert.match(readme, /Direct `docker compose up` startup commands are diagnostic/);
   assert.match(readme, /PUBLIC_HOST_ALIASES/);
   assert.match(readme, /port `443` for HTTPS; port `80` redirects to HTTPS/);
   assert.match(readme, /n8n: port `5678` for HTTPS/);
   assert.match(readme, /OpenSearch Dashboards: port `5601` for HTTPS/);
   assert.match(readme, /setup to generate a self-signed certificate/);
   assert.match(scriptsReadme, /starts core, n8n, and the OpenSearch\/Dashboards ancillary bundle by default/);
+  assert.match(scriptsReadme, /blocks `start` and `restart` until the current release migration marker exists/);
   assert.match(scriptsReadme, /debug mode shows Docker pull progress/);
   assert.match(scriptsReadme, /self-signed nginx certificate/);
   assert.match(scriptsReadme, /NGINX_TLS_CERT_PATH/);
