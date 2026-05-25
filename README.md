@@ -7,7 +7,7 @@ The HustleOps GHCR images are public and can be pulled without signing in.
 ## Requirements
 
 - Docker Engine with Docker Compose v2
-- Node.js 24 or newer for local validation scripts
+- Node.js 24 or newer for deploy metadata validation, migration execution, and the `start`/`restart` migration marker guard
 - Network access to `ghcr.io`
 - `cosign` for release image signature verification
 - `openssl` for generating deployment secrets
@@ -56,6 +56,10 @@ After pulling a newer public deploy repository release, run:
 
 The update flow uses image refs already checked into `docker-compose.prod.yml`, syncs release metadata values from `.env.example` into `.env`, runs preflight checks, captures a PostgreSQL backup, applies pending migrations, runs the idempotent bootstrap contract, recreates core application services, starts n8n and the OpenSearch ancillary bundle, publishes ancillary proxy ports, and prints service status plus access addresses. Operator-provided secrets in `.env` are preserved; legacy `HUSTLEOPS_*_IMAGE` values in an older `.env` file are ignored by the Compose bundle.
 
+The `update` command is required after pulling a newer public deploy release because it records the release-linked database migration marker before starting newer application images. Do not use `start` as the first command after pulling a newer release.
+
+For staged operations that should not start services yet, run `./scripts/deploy.sh update --env-file .env --no-start` after pulling the newer deploy release. Reuse any custom `--compose-file` and `--manifest-file` options when you later run `start` or `restart`.
+
 n8n and the OpenSearch ancillary bundle start by default and are exposed over HTTPS through the ancillary reverse proxy. OpenSearch and OpenSearch Dashboards are started together under the `ancillary-public` Compose profile. Use `--skip-ancillary` when those ports and OpenSearch services must not be published or started, and use `--skip-n8n` when the n8n runtime itself should not be started.
 
 ## Local Validation
@@ -85,6 +89,8 @@ The unified deploy script calls these lower-level scripts internally. Operators 
 
 Manual bootstrap and service start commands:
 
+Direct `docker compose up` startup commands are diagnostic or emergency-only. They bypass the `deploy.sh start` migration marker guard, so do not use them after pulling a newer deploy release until `./scripts/deploy.sh update --env-file .env` or staged `./scripts/deploy.sh update --env-file .env --no-start` has written the current release marker.
+
 ```bash
 docker compose --env-file .env -f docker-compose.prod.yml --profile bootstrap run --rm backend-bootstrap
 docker compose --env-file .env -f docker-compose.prod.yml up -d backend frontend nginx
@@ -108,6 +114,8 @@ After startup, `deploy.sh` prints service access addresses. Set `PUBLIC_HOSTNAME
 ## Starting and Stopping
 
 Start the full stack after it was stopped or brought down:
+
+`start` requires the current release migration marker written by `setup` or `update`. If you pulled a newer deploy bundle, run `update` first so the database schema is upgraded before the newer backend image starts.
 
 ```bash
 ./scripts/deploy.sh start --env-file .env

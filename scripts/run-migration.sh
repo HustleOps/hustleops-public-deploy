@@ -46,85 +46,11 @@ write_success_marker() {
   local output_file="$1"
   local exit_code="$2"
 
-  node - \
-    "$MANIFEST_FILE" \
-    "$output_file" \
-    "$TIMEOUT_SECONDS" \
-    "$exit_code" <<'NODE'
-const fs = require('node:fs');
-const path = require('node:path');
-
-const [manifestFile, outputFile, timeoutSeconds, exitCode] = process.argv.slice(2);
-
-function fail(message) {
-  console.error(message);
-  process.exit(1);
-}
-
-function requireString(value, field) {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    fail(`Release manifest is missing ${field}.`);
-  }
-
-  return value;
-}
-
-function immutableRef(image) {
-  const ref = requireString(image?.ref, 'images.migration.ref');
-  const digest = requireString(image?.digest, 'images.migration.digest');
-  const version = requireString(manifest.release?.version, 'release.version');
-
-  if (!/^sha256:[a-f0-9]{64}$/i.test(digest)) {
-    fail('images.migration.digest must be sha256.');
-  }
-
-  return `${ref}:${version}@${digest}`;
-}
-
-const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-const output = fs.readFileSync(outputFile, 'utf8');
-const migration = manifest.extensions?.migration ?? {};
-const markers = Array.isArray(migration.successOutputMarkers)
-  ? migration.successOutputMarkers
-  : [
-      'All migrations have been successfully applied.',
-      'No pending migrations to apply.',
-    ];
-const matchedOutput = markers.find((marker) => output.includes(marker));
-
-if (!matchedOutput) {
-  fail('Migration output did not include a Prisma success marker.');
-}
-
-const releaseTag = requireString(manifest.release?.tag, 'release.tag');
-const markerPath = migration.successMarkerPath ?? `state/${releaseTag}.migration-success.json`;
-const markerFile = path.isAbsolute(markerPath)
-  ? markerPath
-  : path.join(path.dirname(manifestFile), markerPath);
-const payload = {
-  schemaVersion: migration.successMarkerSchemaVersion ?? 1,
-  status: 'succeeded',
-  completedAt: new Date().toISOString(),
-  release: {
-    tag: releaseTag,
-    version: requireString(manifest.release?.version, 'release.version'),
-    commitSha: requireString(manifest.release?.commitSha, 'release.commitSha'),
-    url: requireString(manifest.release?.url, 'release.url'),
-  },
-  deploy: {
-    trigger: requireString(manifest.deploy?.trigger, 'deploy.trigger'),
-  },
-  migrationImage: immutableRef(manifest.images?.migration),
-  databaseUrlEnvVar: migration.databaseUrlEnvVar ?? 'DATABASE_URL',
-  timeoutSeconds: Number(timeoutSeconds),
-  exitCode: Number(exitCode),
-  matchedOutput,
-};
-
-fs.mkdirSync(path.dirname(markerFile), { recursive: true });
-fs.writeFileSync(markerFile, `${JSON.stringify(payload, null, 2)}\n`);
-console.log(`Wrote migration success marker: ${markerFile}`);
-NODE
+  node "$SCRIPT_DIR/lib/migration-marker.mjs" write-success \
+    --manifest-file "$MANIFEST_FILE" \
+    --output-file "$output_file" \
+    --timeout-seconds "$TIMEOUT_SECONDS" \
+    --exit-code "$exit_code"
 }
 
 while [[ $# -gt 0 ]]; do
