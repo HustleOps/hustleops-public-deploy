@@ -104,6 +104,107 @@ async function createFakeDockerBin() {
   return binDir;
 }
 
+async function createDeployFixture(
+  prefix,
+  { migrated = true, markerOverrides = {}, manifestMutator } = {},
+) {
+  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), prefix));
+  const envFile = path.join(tmpRoot, ".env");
+  const composeFile = path.join(tmpRoot, "docker-compose.prod.yml");
+  const manifestFile = path.join(tmpRoot, "release-manifest.json");
+  const sourceManifest = JSON.parse(
+    await readFile(path.join(projectRoot, "release-manifest.json"), "utf8"),
+  );
+  manifestMutator?.(sourceManifest);
+
+  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
+  await writeFile(composeFile, "services: {}\n");
+  await writeFile(manifestFile, `${JSON.stringify(sourceManifest, null, 2)}\n`);
+
+  if (migrated) {
+    await writeMigrationSuccessMarker(tmpRoot, sourceManifest, markerOverrides);
+  }
+
+  return { tmpRoot, envFile, composeFile, manifestFile, manifest: sourceManifest };
+}
+
+async function writeMigrationSuccessMarker(tmpRoot, manifest, markerOverrides = {}) {
+  const markerFile = migrationMarkerPathForFixture(tmpRoot, manifest);
+  const migrationImage = `${manifest.images.migration.ref}:${manifest.release.version}@${manifest.images.migration.digest}`;
+  const marker = {
+    schemaVersion: manifest.extensions?.migration?.successMarkerSchemaVersion ?? 1,
+    status: "succeeded",
+    completedAt: "2026-05-25T00:00:00.000Z",
+    release: {
+      tag: manifest.release.tag,
+      version: manifest.release.version,
+      commitSha: manifest.release.commitSha,
+      url: manifest.release.url,
+    },
+    deploy: {
+      trigger: manifest.deploy.trigger,
+    },
+    migrationImage,
+    databaseUrlEnvVar: manifest.extensions?.migration?.databaseUrlEnvVar ?? "DATABASE_URL",
+    timeoutSeconds: manifest.extensions?.migration?.timeoutSeconds ?? 600,
+    exitCode: 0,
+    matchedOutput: "No pending migrations to apply.",
+    ...markerOverrides,
+  };
+
+  await mkdir(path.dirname(markerFile), { recursive: true });
+  await writeFile(markerFile, `${JSON.stringify(marker, null, 2)}\n`);
+}
+
+function migrationMarkerPathForFixture(tmpRoot, manifest) {
+  const markerPath = manifest.extensions?.migration?.successMarkerPath;
+  assert.equal(typeof markerPath, "string");
+  assert.equal(path.isAbsolute(markerPath), false);
+
+  const markerFile = path.resolve(tmpRoot, markerPath);
+  const stateRoot = path.resolve(tmpRoot, "state");
+  const relative = path.relative(stateRoot, markerFile);
+  assert.ok(!relative.startsWith(".."));
+  assert.equal(path.isAbsolute(relative), false);
+
+  return markerFile;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function deployFixtureEnv(tmpRoot, fakeDockerBin) {
+  return {
+    ...process.env,
+    HUSTLEOPS_DEPLOY_PROJECT_ROOT: tmpRoot,
+    PATH: `${fakeDockerBin}:${process.env.PATH}`,
+  };
+}
+
+function deployFixtureArgs(command, fixture, extraArgs = []) {
+  return [
+    deployScript,
+    command,
+    "--env-file",
+    fixture.envFile,
+    "--compose-file",
+    fixture.composeFile,
+    "--manifest-file",
+    fixture.manifestFile,
+    ...extraArgs,
+    "--dry-run",
+    "--yes",
+  ];
+}
+
+function runDeployFixture(command, fixture, fakeDockerBin, extraArgs = []) {
+  return execFileAsync("bash", deployFixtureArgs(command, fixture, extraArgs), {
+    cwd: projectRoot,
+    env: deployFixtureEnv(fixture.tmpRoot, fakeDockerBin),
+  });
+}
+
 async function createRecordingPreflightHelper() {
   const helperDir = await mkdtemp(path.join(os.tmpdir(), "hustleops-helper-"));
   const preflightPath = path.join(helperDir, "preflight.sh");
@@ -249,24 +350,147 @@ test("repository workflow action references are pinned", async () => {
   assert.equal(stderr, "");
 });
 
-test("deploy start dry-run prepares Redis data directories before Compose starts services", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-start-"));
-  const envFile = path.join(tmpRoot, ".env");
+test("deploy start and restart require Node for migration guard", async () => {
+  const deploy = await readFile(path.join(projectRoot, "scripts", "deploy.sh"), "utf8");
+
+  assert.match(
+    deploy,
+    /migrate\|start\|restart\)[\s\S]*record_node_requirement/,
+  );
+});
+
+test("deploy start blocks when current release migration marker is missing", async () => {
+  const fixture = await createDeployFixture(
+    "hustleops-missing-marker-start-",
+    { migrated: false },
+  );
   const fakeDockerBin = await createFakeDockerBin();
+  const markerPathPattern = new RegExp(
+    escapeRegExp(fixture.manifest.extensions.migration.successMarkerPath),
+  );
 
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
+  await assert.rejects(
+    runDeployFixture("start", fixture, fakeDockerBin),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, /has not recorded a successful database migration/);
+      assert.match(error.stderr, /deploy\.sh update[\s\S]*--env-file/);
+      assert.match(error.stderr, /--compose-file/);
+      assert.match(error.stderr, /--manifest-file/);
+      assert.match(error.stderr, markerPathPattern);
+      assert.doesNotMatch(error.stdout, /docker compose[\s\S]*up/);
+      return true;
+    },
+  );
+});
 
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes"],
+test("deploy start blocks when migration marker belongs to a stale release", async () => {
+  const staleTag = "v0.0.1";
+  const fixture = await createDeployFixture(
+    "hustleops-stale-marker-start-",
     {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
+      migrated: true,
+      markerOverrides: {
+        release: {
+          tag: staleTag,
+          version: "0.0.1",
+          commitSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          url: "https://github.com/HustleOps/hustleops-app/releases/tag/v0.0.1",
+        },
       },
     },
   );
+  const fakeDockerBin = await createFakeDockerBin();
+  const releaseMismatchPattern = new RegExp(
+    `expected ${escapeRegExp(fixture.manifest.release.tag)}, got ${escapeRegExp(staleTag)}`,
+  );
+
+  await assert.rejects(
+    runDeployFixture("start", fixture, fakeDockerBin),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, /migration marker release\.tag is stale/);
+      assert.match(error.stderr, releaseMismatchPattern);
+      assert.match(error.stderr, /deploy\.sh update[\s\S]*--env-file/);
+      assert.doesNotMatch(error.stdout, /docker compose[\s\S]*up/);
+      return true;
+    },
+  );
+});
+
+test("deploy start blocks when migration marker success fields are invalid", async () => {
+  const fixture = await createDeployFixture(
+    "hustleops-invalid-marker-start-",
+    {
+      migrated: true,
+      markerOverrides: {
+        exitCode: 1,
+        matchedOutput: "Migration failed.",
+      },
+    },
+  );
+  const fakeDockerBin = await createFakeDockerBin();
+
+  await assert.rejects(
+    runDeployFixture("start", fixture, fakeDockerBin),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, /migration marker exitCode is stale/);
+      assert.match(error.stderr, /expected 0, got 1/);
+      assert.doesNotMatch(error.stdout, /docker compose[\s\S]*up/);
+      return true;
+    },
+  );
+});
+
+test("deploy restart blocks missing migration marker before stopping services", async () => {
+  const fixture = await createDeployFixture(
+    "hustleops-missing-marker-restart-",
+    { migrated: false },
+  );
+  const fakeDockerBin = await createFakeDockerBin();
+  const markerPathPattern = new RegExp(
+    escapeRegExp(fixture.manifest.extensions.migration.successMarkerPath),
+  );
+
+  await assert.rejects(
+    runDeployFixture("restart", fixture, fakeDockerBin),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, /has not recorded a successful database migration/);
+      assert.match(error.stderr, markerPathPattern);
+      assert.doesNotMatch(error.stdout, /docker compose[\s\S]*stop/);
+      assert.doesNotMatch(error.stdout, /docker compose[\s\S]*up/);
+      return true;
+    },
+  );
+});
+
+test("deploy start rejects migration marker paths outside state", async () => {
+  const fixture = await createDeployFixture("hustleops-marker-path-escape-", {
+    migrated: false,
+    manifestMutator(manifest) {
+      manifest.extensions.migration.successMarkerPath = "../outside.json";
+    },
+  });
+  const fakeDockerBin = await createFakeDockerBin();
+
+  await assert.rejects(
+    runDeployFixture("start", fixture, fakeDockerBin),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, /migration marker path must stay under state\//);
+      assert.doesNotMatch(error.stdout, /docker compose[\s\S]*up/);
+      return true;
+    },
+  );
+});
+
+test("deploy start dry-run prepares Redis data directories before Compose starts services", async () => {
+  const fixture = await createDeployFixture("hustleops-deploy-start-");
+  const fakeDockerBin = await createFakeDockerBin();
+
+  const { stdout, stderr } = await runDeployFixture("start", fixture, fakeDockerBin);
 
   assert.equal(stderr, "");
   assert.match(stdout, /DRY RUN: mkdir -p .*data\/redis/);
@@ -285,22 +509,14 @@ test("deploy start dry-run prepares Redis data directories before Compose starts
 });
 
 test("deploy start dry-run prepares backend uploads directory before Compose starts services", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-uploads-"));
-  const envFile = path.join(tmpRoot, ".env");
+  const fixture = await createDeployFixture("hustleops-deploy-uploads-");
   const fakeDockerBin = await createFakeDockerBin();
 
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes", "--skip-n8n", "--skip-ancillary"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
-      },
-    },
+  const { stdout, stderr } = await runDeployFixture(
+    "start",
+    fixture,
+    fakeDockerBin,
+    ["--skip-n8n", "--skip-ancillary"],
   );
 
   assert.equal(stderr, "");
@@ -318,23 +534,10 @@ test("deploy start dry-run prepares backend uploads directory before Compose sta
 });
 
 test("deploy start dry-run prepares OpenSearch data directory with ancillary services", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-opensearch-"));
-  const envFile = path.join(tmpRoot, ".env");
+  const fixture = await createDeployFixture("hustleops-deploy-opensearch-");
   const fakeDockerBin = await createFakeDockerBin();
 
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
-      },
-    },
-  );
+  const { stdout, stderr } = await runDeployFixture("start", fixture, fakeDockerBin);
 
   assert.equal(stderr, "");
   assert.match(stdout, /DRY RUN: mkdir -p .*data\/opensearch/);
@@ -505,23 +708,10 @@ test("deploy setup dry-run fails when nginx TLS files are missing", async () => 
 });
 
 test("deploy start dry-run starts ancillary proxy by default", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-ancillary-"));
-  const envFile = path.join(tmpRoot, ".env");
+  const fixture = await createDeployFixture("hustleops-deploy-ancillary-");
   const fakeDockerBin = await createFakeDockerBin();
 
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
-      },
-    },
-  );
+  const { stdout, stderr } = await runDeployFixture("start", fixture, fakeDockerBin);
 
   assert.equal(stderr, "");
   assert.match(stdout, /DRY RUN: mkdir -p .*data\/n8n\/redis/);
@@ -540,23 +730,10 @@ test("deploy start dry-run starts ancillary proxy by default", async () => {
 });
 
 test("deploy start dry-run can skip ancillary proxy explicitly", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-skip-ancillary-"));
-  const envFile = path.join(tmpRoot, ".env");
+  const fixture = await createDeployFixture("hustleops-deploy-skip-ancillary-");
   const fakeDockerBin = await createFakeDockerBin();
 
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes", "--skip-ancillary"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
-      },
-    },
-  );
+  const { stdout, stderr } = await runDeployFixture("start", fixture, fakeDockerBin, ["--skip-ancillary"]);
 
   assert.equal(stderr, "");
   assert.match(stdout, /Skipping ancillary services \(\-\-skip-ancillary\)/);
@@ -587,23 +764,10 @@ test("deploy down dry-run includes ancillary profile services", async () => {
 });
 
 test("deploy start dry-run skip-n8n also skips ancillary proxy", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-skip-n8n-"));
-  const envFile = path.join(tmpRoot, ".env");
+  const fixture = await createDeployFixture("hustleops-deploy-skip-n8n-");
   const fakeDockerBin = await createFakeDockerBin();
 
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes", "--skip-n8n"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
-      },
-    },
-  );
+  const { stdout, stderr } = await runDeployFixture("start", fixture, fakeDockerBin, ["--skip-n8n"]);
 
   assert.equal(stderr, "");
   assert.match(stdout, /Skipping n8n services \(\-\-skip-n8n\)/);
@@ -612,23 +776,10 @@ test("deploy start dry-run skip-n8n also skips ancillary proxy", async () => {
 });
 
 test("deploy restart dry-run stops then starts the full default stack", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-restart-"));
-  const envFile = path.join(tmpRoot, ".env");
+  const fixture = await createDeployFixture("hustleops-deploy-restart-");
   const fakeDockerBin = await createFakeDockerBin();
 
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "restart", "--env-file", envFile, "--dry-run", "--yes"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
-      },
-    },
-  );
+  const { stdout, stderr } = await runDeployFixture("restart", fixture, fakeDockerBin);
 
   assert.equal(stderr, "");
   assert.match(stdout, /DRY RUN: docker compose .* stop/);
@@ -899,39 +1050,16 @@ test("postgres 18 services mount persistent parent directories", async () => {
 });
 
 test("deploy start blocks legacy n8n postgres root data before compose up", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-legacy-n8n-postgres-"));
-  const envFile = path.join(tmpRoot, ".env");
-  const composeFile = path.join(tmpRoot, "docker-compose.prod.yml");
+  const fixture = await createDeployFixture("hustleops-legacy-n8n-postgres-");
+  const { tmpRoot } = fixture;
   const legacyDataDir = path.join(tmpRoot, "data", "n8n", "postgres");
   const fakeDockerBin = await createFakeDockerBin();
 
   await mkdir(legacyDataDir, { recursive: true });
   await writeFile(path.join(legacyDataDir, "PG_VERSION"), "17\n");
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-  await writeFile(composeFile, "services: {}\n");
 
   await assert.rejects(
-    execFileAsync(
-      "bash",
-      [
-        deployScript,
-        "start",
-        "--env-file",
-        envFile,
-        "--compose-file",
-        composeFile,
-        "--dry-run",
-        "--yes",
-      ],
-      {
-        cwd: projectRoot,
-        env: {
-          ...process.env,
-          HUSTLEOPS_DEPLOY_PROJECT_ROOT: tmpRoot,
-          PATH: `${fakeDockerBin}:${process.env.PATH}`,
-        },
-      },
-    ),
+    runDeployFixture("start", fixture, fakeDockerBin),
     (error) => {
       assert.equal(error.code, 1);
       assert.match(error.stderr, /legacy root layout/);
@@ -943,39 +1071,16 @@ test("deploy start blocks legacy n8n postgres root data before compose up", asyn
 });
 
 test("deploy start blocks legacy main postgres pgdata before compose up", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-legacy-main-postgres-"));
-  const envFile = path.join(tmpRoot, ".env");
-  const composeFile = path.join(tmpRoot, "docker-compose.prod.yml");
+  const fixture = await createDeployFixture("hustleops-legacy-main-postgres-");
+  const { tmpRoot } = fixture;
   const legacyDataDir = path.join(tmpRoot, "data", "postgres", "pgdata");
   const fakeDockerBin = await createFakeDockerBin();
 
   await mkdir(legacyDataDir, { recursive: true });
   await writeFile(path.join(legacyDataDir, "PG_VERSION"), "18\n");
-  await writeFile(envFile, "HUSTLEOPS_TEST_ENV=1\n");
-  await writeFile(composeFile, "services: {}\n");
 
   await assert.rejects(
-    execFileAsync(
-      "bash",
-      [
-        deployScript,
-        "start",
-        "--env-file",
-        envFile,
-        "--compose-file",
-        composeFile,
-        "--dry-run",
-        "--yes",
-      ],
-      {
-        cwd: projectRoot,
-        env: {
-          ...process.env,
-          HUSTLEOPS_DEPLOY_PROJECT_ROOT: tmpRoot,
-          PATH: `${fakeDockerBin}:${process.env.PATH}`,
-        },
-      },
-    ),
+    runDeployFixture("start", fixture, fakeDockerBin),
     (error) => {
       assert.equal(error.code, 1);
       assert.match(error.stderr, /legacy pgdata layout/);
@@ -1122,8 +1227,8 @@ test("CI env generator writes nginx TLS fixture paths", async () => {
 });
 
 test("deploy start dry-run prints service access addresses", async () => {
-  const tmpRoot = await mkdtemp(path.join(os.tmpdir(), "hustleops-deploy-addresses-"));
-  const envFile = path.join(tmpRoot, ".env");
+  const fixture = await createDeployFixture("hustleops-deploy-addresses-");
+  const { envFile } = fixture;
   const fakeDockerBin = await createFakeDockerBin();
 
   await writeFile(
@@ -1136,17 +1241,7 @@ test("deploy start dry-run prints service access addresses", async () => {
     ].join("\n"),
   );
 
-  const { stdout, stderr } = await execFileAsync(
-    "bash",
-    [deployScript, "start", "--env-file", envFile, "--dry-run", "--yes"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        PATH: `${fakeDockerBin}:${process.env.PATH}`,
-      },
-    },
-  );
+  const { stdout, stderr } = await runDeployFixture("start", fixture, fakeDockerBin);
 
   assert.equal(stderr, "");
   assert.match(stdout, /Service access addresses:/);

@@ -46,8 +46,8 @@ Commands:
   setup       Run first-install flow: preflight, migration, bootstrap, start (no backup — fresh DB)
               Fails if PostgreSQL is already reachable (use --force to override, or use 'update' instead)
   update      Run update flow: preflight, backup, migration, bootstrap, start
-  start       Start stack if it was previously stopped or down
-  restart     Restart stack
+  start       Start stack if it was previously stopped or down (requires current release migration marker)
+  restart     Restart stack (requires current release migration marker)
   stop        Stop services (containers remain, data preserved)
   down        Stop and remove containers and networks (data volumes preserved)
   status      Show Docker Compose service status
@@ -599,7 +599,7 @@ check_tools() {
         record_cosign_requirement
       fi
       ;;
-    migrate)
+    migrate|start|restart)
       record_node_requirement
       ;;
   esac
@@ -637,7 +637,7 @@ check_files() {
   esac
 
   case "$COMMAND" in
-    setup|update|preflight|migrate)
+    setup|update|preflight|migrate|start|restart)
       require_file "$MANIFEST_FILE" "Release manifest file"
       ;;
   esac
@@ -1045,6 +1045,13 @@ run_migration() {
   fail "Migration failed." "$status"
 }
 
+assert_current_release_migrated() {
+  node "$SCRIPT_DIR/lib/migration-marker.mjs" assert-current \
+    --manifest-file "$MANIFEST_FILE" \
+    --env-file "$ENV_FILE" \
+    --compose-file "$COMPOSE_FILE"
+}
+
 run_bootstrap() {
   if [[ "$SKIP_BOOTSTRAP" -eq 1 ]]; then
     note "Skipping bootstrap (--skip-bootstrap)"
@@ -1219,19 +1226,23 @@ case "$COMMAND" in
     run_standard_flow
     ;;
   start)
-    step 1 2 "Checking required tools and files"
-    check_tools
-    check_files
-    step 2 2 "Starting stack"
-    start_stack_services
-    ;;
-  restart)
     step 1 3 "Checking required tools and files"
     check_tools
     check_files
-    step 2 3 "Stopping services"
-    stop_stack_services
+    step 2 3 "Checking database migration marker"
+    assert_current_release_migrated
     step 3 3 "Starting stack"
+    start_stack_services
+    ;;
+  restart)
+    step 1 4 "Checking required tools and files"
+    check_tools
+    check_files
+    step 2 4 "Checking database migration marker"
+    assert_current_release_migrated
+    step 3 4 "Stopping services"
+    stop_stack_services
+    step 4 4 "Starting stack"
     start_stack_services
     ;;
   stop)
