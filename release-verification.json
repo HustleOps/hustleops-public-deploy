@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "release": {
-    "tag": "v0.2.5",
-    "version": "0.2.5",
-    "commitSha": "468be65bb7dc4992aba2e2d7146fe835ddf120d0",
-    "releasedAt": "2026-05-15T19:47:27Z",
-    "summary": "Release v0.2.5 public runtime images and migration contract.",
-    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.2.5"
+    "tag": "v0.2.6",
+    "version": "0.2.6",
+    "commitSha": "370d0f3e255169a1f36deb667ddfbebfe86959d0",
+    "releasedAt": "2026-05-25T12:44:06Z",
+    "summary": "Release v0.2.6 public runtime images and migration contract.",
+    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.2.6"
   },
   "trustPolicy": {
     "provider": "github-actions",
     "issuer": "https://token.actions.githubusercontent.com",
-    "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.5",
+    "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.6",
     "requiredArtifacts": [
       "signature",
       "provenance",
@@ -23,13 +23,13 @@
   "images": {
     "backend": {
       "name": "hustleops-public-backend",
-      "digest": "sha256:ee0334717dd29f96e124be02f9ebf23ed1a58be392559cd88f94125a0134ee4c",
-      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend:0.2.5@sha256:ee0334717dd29f96e124be02f9ebf23ed1a58be392559cd88f94125a0134ee4c",
+      "digest": "sha256:036323c0a4e99763e692dbe168576e081bb6e39560f40c3eb1597bd1320be2b8",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend:0.2.6@sha256:036323c0a4e99763e692dbe168576e081bb6e39560f40c3eb1597bd1320be2b8",
       "verification": {
         "signature": {
           "provider": "github-actions",
           "issuer": "https://token.actions.githubusercontent.com",
-          "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.5"
+          "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.6"
         },
         "provenance": {
           "provider": "github-actions",
@@ -43,13 +43,13 @@
     },
     "frontend": {
       "name": "hustleops-public-frontend",
-      "digest": "sha256:eca576a5bcebd0ba8644c0ebaeed5689edf6c29622cefc7a9c469c5ce473485e",
-      "immutableRef": "ghcr.io/hustleops/hustleops-public-frontend:0.2.5@sha256:eca576a5bcebd0ba8644c0ebaeed5689edf6c29622cefc7a9c469c5ce473485e",
+      "digest": "sha256:1817b2a07e9ee38f03d2ab7dc48c691a492f50f64e0d89d34dbce58e166466b5",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-frontend:0.2.6@sha256:1817b2a07e9ee38f03d2ab7dc48c691a492f50f64e0d89d34dbce58e166466b5",
       "verification": {
         "signature": {
           "provider": "github-actions",
           "issuer": "https://token.actions.githubusercontent.com",
-          "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.5"
+          "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.6"
         },
         "provenance": {
           "provider": "github-actions",
@@ -63,13 +63,13 @@
     },
     "migration": {
       "name": "hustleops-public-backend-migrate",
-      "digest": "sha256:2c547d699e88f2693c0aa90aa9e84eb890affcc7118b22c60b96dfed83749b6d",
-      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.5@sha256:2c547d699e88f2693c0aa90aa9e84eb890affcc7118b22c60b96dfed83749b6d",
+      "digest": "sha256:a038160bb54c72974c649c40463c8019ce9e10a1eeb70126a2b19f089bb23f15",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.6@sha256:a038160bb54c72974c649c40463c8019ce9e10a1eeb70126a2b19f089bb23f15",
       "verification": {
         "signature": {
           "provider": "github-actions",
           "issuer": "https://token.actions.githubusercontent.com",
-          "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.5"
+          "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.6"
         },
         "provenance": {
           "provider": "github-actions",
