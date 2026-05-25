@@ -865,6 +865,7 @@ test("release metadata validation accepts env files without runtime image keys",
   const generatedEnv = path.join(tmpRoot, "ci.env");
   const filteredEnv = path.join(tmpRoot, "ci-without-images.env");
   const signaturePlan = path.join(tmpRoot, "image-signatures.tsv");
+  const verification = JSON.parse(await readFile(path.join(projectRoot, "release-verification.json"), "utf8"));
 
   await execFileAsync("node", [path.join(projectRoot, "scripts", "make-ci-env.mjs"), "--output", generatedEnv], {
     cwd: projectRoot,
@@ -892,7 +893,47 @@ test("release metadata validation accepts env files without runtime image keys",
 
   assert.equal(stderr, "");
   assert.match(stdout, /Release metadata validation passed/);
-  assert.match(await readFile(signaturePlan, "utf8"), /ghcr\.io\/hustleops\/hustleops-public-backend:0\.2\.5@sha256:/);
+  const signaturePlanContent = await readFile(signaturePlan, "utf8");
+  const expectedIssuer = "https://token.actions.githubusercontent.com";
+  const expectedCertificateIdentityPattern =
+    /^https:\/\/github\.com\/HustleOps\/hustleops-app\/\.github\/workflows\/release\.yml@refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$/;
+
+  assert.equal(
+    verification.trustPolicy.issuer,
+    expectedIssuer,
+    "release-verification.json trustPolicy.issuer must use GitHub Actions OIDC",
+  );
+  assert.match(
+    verification.trustPolicy.certificateIdentity,
+    expectedCertificateIdentityPattern,
+    "release-verification.json trustPolicy.certificateIdentity must point at the tagged source app release workflow",
+  );
+
+  for (const imageKey of ["backend", "frontend", "migration"]) {
+    const signature = verification.images[imageKey].verification.signature;
+    assert.equal(
+      signature.issuer,
+      verification.trustPolicy.issuer,
+      `release-verification.json images.${imageKey}.verification.signature.issuer must match trustPolicy.issuer`,
+    );
+    assert.equal(
+      signature.certificateIdentity,
+      verification.trustPolicy.certificateIdentity,
+      `release-verification.json images.${imageKey}.verification.signature.certificateIdentity must match trustPolicy.certificateIdentity`,
+    );
+
+    const expectedSignature = [
+      verification.images[imageKey].immutableRef,
+      verification.trustPolicy.certificateIdentity,
+      verification.trustPolicy.issuer,
+    ].join("\t");
+
+    assert.match(
+      signaturePlanContent,
+      new RegExp(`^${escapeRegExp(expectedSignature)}$`, "m"),
+      `image-signatures.tsv must contain the ${imageKey} immutable ref, certificate identity, and issuer from release-verification.json`,
+    );
+  }
 });
 
 test("release metadata validation rejects a stale backend-bootstrap image", async () => {
