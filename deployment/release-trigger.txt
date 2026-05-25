@@ -1,1 +1,1 @@
-release-v0.2.5-468be65bb7dc
+release-v0.2.6-370d0f3e2551
