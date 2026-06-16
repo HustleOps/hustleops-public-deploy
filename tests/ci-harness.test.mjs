@@ -896,7 +896,7 @@ test("release metadata validation accepts env files without runtime image keys",
   const signaturePlanContent = await readFile(signaturePlan, "utf8");
   const expectedIssuer = "https://token.actions.githubusercontent.com";
   const expectedCertificateIdentityPattern =
-    /^https:\/\/github\.com\/HustleOps\/hustleops-app\/\.github\/workflows\/release\.yml@refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$/;
+    /^https:\/\/github\.com\/HustleOps\/hustleops-app\/\.github\/workflows\/release\.yml@refs\/heads\/main$/;
 
   assert.equal(
     verification.trustPolicy.issuer,
@@ -906,7 +906,7 @@ test("release metadata validation accepts env files without runtime image keys",
   assert.match(
     verification.trustPolicy.certificateIdentity,
     expectedCertificateIdentityPattern,
-    "release-verification.json trustPolicy.certificateIdentity must point at the tagged source app release workflow",
+    "release-verification.json trustPolicy.certificateIdentity must point at the source app release workflow on refs/heads/main",
   );
 
   for (const imageKey of ["backend", "frontend", "migration"]) {
@@ -1440,11 +1440,11 @@ test("update-from-contract workflow trusts the canonical source app release iden
 
   assert.match(
     workflow,
-    /CONTRACT_CERTIFICATE_IDENTITY_PATTERN: https:\/\/github\.com\/HustleOps\/hustleops-app\/\.github\/workflows\/release\.yml@refs\/tags\/v\*/,
+    /CONTRACT_CERTIFICATE_IDENTITY_PATTERN: https:\/\/github\.com\/HustleOps\/hustleops-app\/\.github\/workflows\/release\.yml@refs\/heads\/main/,
   );
   assert.match(
     workflow,
-    /CONTRACT_CERTIFICATE_IDENTITY_REGEXP: \^https:\/\/github\\\.com\/HustleOps\/hustleops-app\/\\\.github\/workflows\/release\\\.yml@refs\/tags\/v\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+\$/,
+    /CONTRACT_CERTIFICATE_IDENTITY_REGEXP: \^https:\/\/github\\\.com\/HustleOps\/hustleops-app\/\\\.github\/workflows\/release\\\.yml@refs\/heads\/main\$/,
   );
   assert.doesNotMatch(workflow, /HustleOps\/HustleOps\/\.github\/workflows\/release\.yml/);
 });

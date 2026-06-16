@@ -148,7 +148,7 @@ function validateImages(contract, version) {
   }
 }
 
-function validateTrust(contract, { expectedIssuer, certificateIdentityPattern, tag }) {
+function validateTrust(contract, { expectedIssuer, certificateIdentityPattern }) {
   const issuer = requireString(contract.trust?.cosignIssuer, "trust.cosignIssuer");
   const certificateIdentity = requireString(
     contract.trust?.certificateIdentity,
@@ -164,8 +164,8 @@ function validateTrust(contract, { expectedIssuer, certificateIdentityPattern, t
     throw new Error("Release contract trust certificateIdentity must match pinned certificate identity pattern.");
   }
 
-  if (!certificateIdentity.endsWith(`@refs/tags/${tag}`)) {
-    throw new Error("Release contract trust certificateIdentity must be pinned to the release tag.");
+  if (!certificateIdentity.endsWith("@refs/heads/main")) {
+    throw new Error("Release contract trust certificateIdentity must be pinned to refs/heads/main.");
   }
 
   if (!Array.isArray(contract.trust?.requiredArtifacts) ||
@@ -197,7 +197,7 @@ function validateRuntime(contract) {
 function validateContract(contract, trustConfig) {
   const release = validateRelease(contract);
   validateImages(contract, release.version);
-  validateTrust(contract, { ...trustConfig, tag: release.tag });
+  validateTrust(contract, trustConfig);
   validateRuntime(contract);
   return release;
 }
