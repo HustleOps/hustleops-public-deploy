@@ -125,7 +125,7 @@
     "verification": {
       "provider": "github-actions",
       "issuer": "https://token.actions.githubusercontent.com",
-      "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/tags/v0.2.6",
+      "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/heads/main",
       "requiredArtifacts": [
         "signature",
         "provenance",
