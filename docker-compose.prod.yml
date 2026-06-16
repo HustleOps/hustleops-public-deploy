@@ -142,7 +142,7 @@ services:
 
   backend:
     <<: *node-runtime-hardening
-    image: ghcr.io/hustleops/hustleops-public-backend:0.2.6@sha256:036323c0a4e99763e692dbe168576e081bb6e39560f40c3eb1597bd1320be2b8
+    image: ghcr.io/hustleops/hustleops-public-backend:0.2.8@sha256:b57190f698f362df83555d3bfc4aa875e5e0e1b87f491e32d67f58db05443701
     platform: linux/amd64
     restart: unless-stopped
     environment:
@@ -195,7 +195,7 @@ services:
 
   backend-migrate:
     <<: *node-runtime-hardening
-    image: ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.6@sha256:a038160bb54c72974c649c40463c8019ce9e10a1eeb70126a2b19f089bb23f15
+    image: ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.8@sha256:91e9625684ed8492bf06d3e2059b5822b9fde175eefdfa9eae2441531b6d2543
     platform: linux/amd64
     restart: "no"
     environment:
@@ -216,7 +216,7 @@ services:
 
   backend-bootstrap:
     <<: *node-runtime-hardening
-    image: ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.6@sha256:a038160bb54c72974c649c40463c8019ce9e10a1eeb70126a2b19f089bb23f15
+    image: ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.8@sha256:91e9625684ed8492bf06d3e2059b5822b9fde175eefdfa9eae2441531b6d2543
     platform: linux/amd64
     entrypoint: ["node"]
     command: ["dist/prisma/bootstrap.js"]
@@ -241,7 +241,7 @@ services:
 
   frontend:
     <<: *nginx-runtime-hardening
-    image: ghcr.io/hustleops/hustleops-public-frontend:0.2.6@sha256:1817b2a07e9ee38f03d2ab7dc48c691a492f50f64e0d89d34dbce58e166466b5
+    image: ghcr.io/hustleops/hustleops-public-frontend:0.2.8@sha256:9b7d8cac02520b80e81cf5d150a348480d31059c3da8db035d771ee914925b8d
     platform: linux/amd64
     restart: unless-stopped
     labels:

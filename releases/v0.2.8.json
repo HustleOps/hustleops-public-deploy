@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "tag": "v0.2.8",
+    "version": "0.2.8",
+    "commitSha": "2ab1d55e75eb8c66e6e21b44a2135e70b2cf96db",
+    "releasedAt": "2026-06-16T17:31:18Z",
+    "summary": "Release v0.2.8 public runtime images and migration contract.",
+    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.2.8"
+  },
+  "contract": {
+    "ref": "ghcr.io/hustleops/hustleops-release-contract@sha256:83de2bc892538c3024090838fd4923015a86d7eabc2b1667089be5b6475876d6",
+    "digest": "sha256:83de2bc892538c3024090838fd4923015a86d7eabc2b1667089be5b6475876d6",
+    "digestRef": "ghcr.io/hustleops/hustleops-release-contract@sha256:83de2bc892538c3024090838fd4923015a86d7eabc2b1667089be5b6475876d6",
+    "verifiedAt": "2026-06-16T17:36:37.440Z"
+  },
+  "images": {
+    "backend": {
+      "ref": "ghcr.io/hustleops/hustleops-public-backend",
+      "tag": "0.2.8",
+      "digest": "sha256:b57190f698f362df83555d3bfc4aa875e5e0e1b87f491e32d67f58db05443701",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend:0.2.8@sha256:b57190f698f362df83555d3bfc4aa875e5e0e1b87f491e32d67f58db05443701"
+    },
+    "frontend": {
+      "ref": "ghcr.io/hustleops/hustleops-public-frontend",
+      "tag": "0.2.8",
+      "digest": "sha256:9b7d8cac02520b80e81cf5d150a348480d31059c3da8db035d771ee914925b8d",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-frontend:0.2.8@sha256:9b7d8cac02520b80e81cf5d150a348480d31059c3da8db035d771ee914925b8d"
+    },
+    "migration": {
+      "ref": "ghcr.io/hustleops/hustleops-public-backend-migrate",
+      "tag": "0.2.8",
+      "digest": "sha256:91e9625684ed8492bf06d3e2059b5822b9fde175eefdfa9eae2441531b6d2543",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.8@sha256:91e9625684ed8492bf06d3e2059b5822b9fde175eefdfa9eae2441531b6d2543"
+    }
+  },
+  "runtime": {
+    "platform": "linux/amd64",
+    "services": {
+      "backend": {
+        "containerPort": 3000,
+        "healthPath": "/api/health",
+        "requiredEnv": [
+          "DATABASE_URL",
+          "JWT_ACCESS_SECRET",
+          "JWT_REFRESH_SECRET",
+          "TWO_FACTOR_ENCRYPTION_KEY",
+          "CORS_ORIGIN"
+        ],
+        "requiredCapabilities": [
+          "postgres",
+          "redis",
+          "opensearch",
+          "writableUploads",
+          "writableTmp"
+        ]
+      },
+      "frontend": {
+        "containerPort": 8080,
+        "healthPath": "/",
+        "requiredCapabilities": [
+          "httpIngress"
+        ]
+      },
+      "migration": {
+        "requiredEnv": [
+          "DATABASE_URL"
+        ],
+        "requiredCapabilities": [
+          "postgres"
+        ]
+      }
+    }
+  },
+  "trust": {
+    "provider": "github-actions",
+    "cosignIssuer": "https://token.actions.githubusercontent.com",
+    "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/heads/main",
+    "requiredArtifacts": [
+      "signature",
+      "provenance",
+      "sbom"
+    ],
+    "sbomFormat": "spdx-json",
+    "provenanceMode": "max"
+  },
+  "migration": {
+    "required": true,
+    "databaseUrlEnvVar": "DATABASE_URL",
+    "timeoutSeconds": 600,
+    "timeoutSemantics": "fail if the migration command exceeds timeoutSeconds or exits non-zero",
+    "successExitCode": 0,
+    "successOutputMarkers": [
+      "All migrations have been successfully applied.",
+      "No pending migrations to apply."
+    ],
+    "ownership": "single-runner",
+    "rerunPolicy": "idempotent",
+    "repeatReleaseBehavior": "safe-to-rerun-same-release"
+  },
+  "deployment": {
+    "trigger": "release-v0.2.8-2ab1d55e75eb"
+  }
+}
