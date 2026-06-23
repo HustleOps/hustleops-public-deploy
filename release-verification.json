@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "release": {
-    "tag": "v0.2.8",
-    "version": "0.2.8",
-    "commitSha": "2ab1d55e75eb8c66e6e21b44a2135e70b2cf96db",
-    "releasedAt": "2026-06-16T17:31:18Z",
-    "summary": "Release v0.2.8 public runtime images and migration contract.",
-    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.2.8"
+    "tag": "v0.3.0",
+    "version": "0.3.0",
+    "commitSha": "8f28eebad5fb2a22cdcad01cd3427f18e70151ce",
+    "releasedAt": "2026-06-23T13:00:54Z",
+    "summary": "Release v0.3.0 public runtime images and migration contract.",
+    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.3.0"
   },
   "trustPolicy": {
     "provider": "github-actions",
@@ -23,8 +23,8 @@
   "images": {
     "backend": {
       "name": "hustleops-public-backend",
-      "digest": "sha256:b57190f698f362df83555d3bfc4aa875e5e0e1b87f491e32d67f58db05443701",
-      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend:0.2.8@sha256:b57190f698f362df83555d3bfc4aa875e5e0e1b87f491e32d67f58db05443701",
+      "digest": "sha256:0cc120713034e354066be02a8f6167a168bb59b963075708ab3635fe870baa1a",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend:0.3.0@sha256:0cc120713034e354066be02a8f6167a168bb59b963075708ab3635fe870baa1a",
       "verification": {
         "signature": {
           "provider": "github-actions",
@@ -43,8 +43,8 @@
     },
     "frontend": {
       "name": "hustleops-public-frontend",
-      "digest": "sha256:9b7d8cac02520b80e81cf5d150a348480d31059c3da8db035d771ee914925b8d",
-      "immutableRef": "ghcr.io/hustleops/hustleops-public-frontend:0.2.8@sha256:9b7d8cac02520b80e81cf5d150a348480d31059c3da8db035d771ee914925b8d",
+      "digest": "sha256:abd43008961c808e433b351d8adb0effe79a0ecf1cb4a4c1aadbef74feec83f7",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-frontend:0.3.0@sha256:abd43008961c808e433b351d8adb0effe79a0ecf1cb4a4c1aadbef74feec83f7",
       "verification": {
         "signature": {
           "provider": "github-actions",
@@ -63,8 +63,8 @@
     },
     "migration": {
       "name": "hustleops-public-backend-migrate",
-      "digest": "sha256:91e9625684ed8492bf06d3e2059b5822b9fde175eefdfa9eae2441531b6d2543",
-      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend-migrate:0.2.8@sha256:91e9625684ed8492bf06d3e2059b5822b9fde175eefdfa9eae2441531b6d2543",
+      "digest": "sha256:100fa9a13e7ea1e61b2e04eea85175f367ca34801b6a207ef7648142dc6105bc",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend-migrate:0.3.0@sha256:100fa9a13e7ea1e61b2e04eea85175f367ca34801b6a207ef7648142dc6105bc",
       "verification": {
         "signature": {
           "provider": "github-actions",
