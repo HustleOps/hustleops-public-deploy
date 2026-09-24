@@ -3,6 +3,7 @@
 .env.*.local
 
 .DS_Store
+.bug-hunter/
 
 .hustleops/*
 !.hustleops/.gitkeep
