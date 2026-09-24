@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -63,7 +64,7 @@ load_env_metadata() {
     key="$(trim "${line%%=*}")"
     value="$(trim "${line#*=}")"
 
-    if [[ "$value" =~ ^".*"$ || "$value" =~ ^'.*'$ ]]; then
+    if [[ "$value" =~ ^\".*\"$ || "$value" =~ ^\'.*\'$ ]]; then
       value="${value:1:${#value}-2}"
     fi
 
@@ -156,8 +157,6 @@ fi
 
 safe_tag="$(sanitize_filename_part "$RELEASE_TAG")"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-backup_file="$OUTPUT_DIR/${safe_tag}-${timestamp}.postgres.dump"
-
 mkdir -p "$OUTPUT_DIR"
 
 note "Waiting for PostgreSQL to be ready..."
@@ -177,6 +176,7 @@ until docker compose \
   sleep 1
 done
 
+backup_file="$(mktemp "$OUTPUT_DIR/${safe_tag}-${timestamp}.postgres.dump.XXXXXX")"
 note "Capturing PostgreSQL backup for $RELEASE_TAG"
 if ! docker compose \
   --env-file "$ENV_FILE" \

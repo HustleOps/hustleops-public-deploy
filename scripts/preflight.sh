@@ -143,7 +143,7 @@ load_env_file() {
       fail "Invalid env line in $ENV_FILE: $line"
     fi
 
-    if [[ "$value" =~ ^".*"$ || "$value" =~ ^'.*'$ ]]; then
+    if [[ "$value" =~ ^\".*\"$ || "$value" =~ ^\'.*\'$ ]]; then
       value="${value:1:${#value}-2}"
     fi
 
@@ -398,13 +398,12 @@ COMPOSE_FILE="$(resolve_path "$COMPOSE_FILE")"
 MANIFEST_FILE="$(resolve_path "$MANIFEST_FILE")"
 VERIFICATION_FILE="$(resolve_path "$VERIFICATION_FILE")"
 
-[[ "$PREFLIGHT_VERBOSITY" -ge 3 ]] && set -x
-
 [[ -f "$ENV_FILE" ]] || fail "Env file not found: $ENV_FILE"
 [[ -f "$COMPOSE_FILE" ]] || fail "Compose file not found: $COMPOSE_FILE"
 
 load_env_file
 validate_env
+[[ "$PREFLIGHT_VERBOSITY" -ge 3 ]] && set -x
 
 missing_required_tools=()
 record_common_tool_requirements

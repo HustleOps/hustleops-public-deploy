@@ -32,7 +32,7 @@ GENERATE_SELF_SIGNED_CERT=0
 #   0 = quiet   — errors only
 #   1 = normal  — step banners (default)
 #   2 = verbose — step banners + notable sub-actions + commands run
-#   3 = debug   — everything above + shell trace (set -x)
+#   3 = debug   — everything above + debug messages
 VERBOSITY=1
 OPENSEARCH_CONTAINER_OWNER="1000:1000"
 N8N_CONTAINER_OWNER="1000:1000"
@@ -44,7 +44,7 @@ Usage: ./scripts/deploy.sh {setup|update|start|restart|stop|down|status|prefligh
 
 Commands:
   setup       Run first-install flow: preflight, migration, bootstrap, start (no backup — fresh DB)
-              Fails if PostgreSQL is already reachable (use --force to override, or use 'update' instead)
+              Fails if PostgreSQL data exists or is already reachable (use --force to override)
   update      Run update flow: preflight, backup, migration, bootstrap, start
   start       Start stack if it was previously stopped or down (requires current release migration marker)
   restart     Restart stack (requires current release migration marker)
@@ -520,9 +520,6 @@ done
 [[ "$TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || fail "--timeout-seconds must be a positive integer."
 [[ "$TIMEOUT_SECONDS" -gt 0 ]] || fail "--timeout-seconds must be greater than zero."
 
-# Enable shell trace at debug level
-[[ "$VERBOSITY" -ge 3 ]] && set -x
-
 ENV_FILE="$(resolve_path "$ENV_FILE")"
 ENV_TEMPLATE_FILE="$(resolve_path "$ENV_TEMPLATE_FILE")"
 COMPOSE_FILE="$(resolve_path "$COMPOSE_FILE")"
@@ -536,6 +533,10 @@ guard_setup_not_already_done() {
     return
   fi
   [[ "$DRY_RUN" -eq 1 ]] && return
+
+  if [[ -f "$PROJECT_ROOT/data/postgres/18/docker/PG_VERSION" ]]; then
+    fail "PostgreSQL data already exists — run 'update' instead, or pass --force to run setup anyway."
+  fi
 
   verbose_note "Probing PostgreSQL to confirm this is a fresh install..."
   if docker compose \
@@ -569,6 +570,9 @@ ensure_dind_mounts() {
   # (Docker Desktop host-sharing) FUSE filesystem, the Docker daemon cannot
   # bind-mount paths from that filesystem.  Delegate to setup-dind.sh, which
   # replaces each bind-mount source path with a symlink to a native location.
+  case "$COMMAND" in
+    stop|down|status|backup|preflight) return 0 ;;
+  esac
   grep -q 'fakeowner' /proc/mounts 2>/dev/null || return 0
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -1163,7 +1167,7 @@ start_stack_services() {
 }
 
 stop_stack_services() {
-  run_cmd docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" stop
+  run_cmd docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile ancillary-public stop
 }
 
 run_setup_flow() {
