@@ -48,6 +48,8 @@ write_success_marker() {
 
   node "$SCRIPT_DIR/lib/migration-marker.mjs" write-success \
     --manifest-file "$MANIFEST_FILE" \
+    --env-file "$ENV_FILE" \
+    --compose-file "$COMPOSE_FILE" \
     --output-file "$output_file" \
     --timeout-seconds "$TIMEOUT_SECONDS" \
     --exit-code "$exit_code"

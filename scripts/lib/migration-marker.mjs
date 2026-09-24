@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -125,6 +127,53 @@ function requiredMarkerFields(migration) {
       ];
 }
 
+function databaseTargetFingerprint(envFile, composeFile, databaseUrlEnvVar) {
+  let configuration;
+  try {
+    configuration = JSON.parse(execFileSync("docker", [
+      "compose", "--env-file", envFile, "-f", composeFile,
+      "--profile", "migration", "config", "--format", "json",
+    ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }));
+  } catch {
+    throw new Error("Unable to render Compose configuration for the migration database target");
+  }
+
+  const databaseUrl = configuration.services?.["backend-migrate"]?.environment?.[databaseUrlEnvVar];
+  if (typeof databaseUrl !== "string") {
+    throw new Error(`Compose migration service is missing ${databaseUrlEnvVar}`);
+  }
+
+  let url;
+  try {
+    url = new URL(databaseUrl);
+  } catch {
+    throw new Error("Compose migration database URL is invalid");
+  }
+
+  const postgresData = configuration.services?.postgres?.volumes
+    ?.filter((volume) => volume.target.startsWith("/var/lib/postgresql"))
+    .map((volume) => ({
+      type: volume.type,
+      target: volume.target,
+      source: volume.type === "bind" && fs.existsSync(volume.source)
+        ? fs.realpathSync(volume.source)
+        : volume.source,
+    })) ?? [];
+
+  // Keep credentials out of the marker and its fingerprint input.
+  const target = {
+    project: configuration.name,
+    protocol: url.protocol,
+    host: url.hostname,
+    port: url.port,
+    database: url.pathname,
+    schema: url.searchParams.get("schema"),
+    user: url.username,
+    postgresData,
+  };
+  return createHash("sha256").update(JSON.stringify(target)).digest("hex");
+}
+
 function assertCurrent(options) {
   const context = {
     manifestFile: requireOption(options, "manifest-file"),
@@ -195,6 +244,11 @@ function assertCurrent(options) {
   );
   assertEqual(marker.migrationImage, immutableMigrationImage(manifest, fail), "migrationImage");
   assertEqual(marker.databaseUrlEnvVar, migration.databaseUrlEnvVar ?? "DATABASE_URL", "databaseUrlEnvVar");
+  assertEqual(
+    marker.databaseTargetFingerprint,
+    databaseTargetFingerprint(context.envFile, context.composeFile, migration.databaseUrlEnvVar ?? "DATABASE_URL"),
+    "databaseTargetFingerprint",
+  );
   assertEqual(marker.exitCode, migration.successExitCode ?? 0, "exitCode");
 
   if (!successMarkers.includes(marker.matchedOutput)) {
@@ -206,6 +260,8 @@ function assertCurrent(options) {
 
 function writeSuccess(options) {
   const manifestFile = requireOption(options, "manifest-file");
+  const envFile = requireOption(options, "env-file");
+  const composeFile = requireOption(options, "compose-file");
   const outputFile = requireOption(options, "output-file");
   const timeoutSeconds = Number.parseInt(requireOption(options, "timeout-seconds"), 10);
   const exitCode = Number.parseInt(requireOption(options, "exit-code"), 10);
@@ -256,6 +312,11 @@ function writeSuccess(options) {
     },
     migrationImage: immutableMigrationImage(manifest, fail),
     databaseUrlEnvVar: migration.databaseUrlEnvVar ?? "DATABASE_URL",
+    databaseTargetFingerprint: databaseTargetFingerprint(
+      envFile,
+      composeFile,
+      migration.databaseUrlEnvVar ?? "DATABASE_URL",
+    ),
     timeoutSeconds,
     exitCode,
     matchedOutput,

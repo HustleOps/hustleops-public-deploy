@@ -303,12 +303,15 @@ function buildRootManifest({
   const existingMigration = existingExtensions.migration ?? {};
   const { envVar: _legacyMigrationEnvVar, ...migrationExtension } = existingMigration;
   const existingVerification = existingExtensions.verification ?? {};
-  const successOutputMarkers = Array.isArray(contract.migration?.successOutputMarkers)
-    ? contract.migration.successOutputMarkers
-    : existingMigration.successOutputMarkers ?? [
+  const successOutputMarkers = contract.migration?.successOutputMarkers
+    ?? existingMigration.successOutputMarkers ?? [
         "All migrations have been successfully applied.",
         "No pending migrations to apply.",
       ];
+  if (!Array.isArray(successOutputMarkers) || successOutputMarkers.length === 0 ||
+      !successOutputMarkers.every((marker) => typeof marker === "string" && marker.trim() !== "")) {
+    throw new Error("Release contract migration successOutputMarkers must contain nonempty strings.");
+  }
 
   return {
     schemaVersion: SCHEMA_VERSION,
