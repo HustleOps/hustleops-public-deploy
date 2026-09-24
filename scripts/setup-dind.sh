@@ -7,7 +7,7 @@
 # condition and replaces each bind-mount source path with a symlink to a native
 # filesystem location, allowing the Docker daemon to resolve and mount them.
 #
-# Safe to run multiple times — already-symlinked paths are skipped.
+# Safe to run multiple times — links to the same native base are skipped.
 # Requires passwordless sudo for creating directories under /var/local/.
 #
 # Usage:
@@ -18,6 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NATIVE_BASE="/var/local/hustleops"
+NATIVE_BASE_EXPLICIT=0
 DRY_RUN=0
 VERBOSE=0
 
@@ -28,7 +29,7 @@ while [[ $# -gt 0 ]]; do
       PROJECT_ROOT="$2"; shift 2 ;;
     --native-base)
       [[ $# -ge 2 ]] || { echo "Missing value for --native-base" >&2; exit 1; }
-      NATIVE_BASE="$2"; shift 2 ;;
+      NATIVE_BASE="$2"; NATIVE_BASE_EXPLICIT=1; shift 2 ;;
     --dry-run)
       DRY_RUN=1; shift ;;
     --verbose)
@@ -42,6 +43,14 @@ done
 if ! grep -q 'fakeowner' /proc/mounts 2>/dev/null; then
   [[ "$VERBOSE" -eq 1 ]] && echo "Not in a fakeowner environment — nothing to do."
   exit 0
+fi
+
+PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd -P)"
+if [[ "$NATIVE_BASE_EXPLICIT" -eq 0 ]]; then
+  command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required for native shadow paths" >&2; exit 1; }
+  NATIVE_BASE="$NATIVE_BASE/$(printf '%s' "$PROJECT_ROOT" | sha256sum | cut -c1-16)"
+elif [[ "$NATIVE_BASE" != /* ]]; then
+  NATIVE_BASE="$PWD/${NATIVE_BASE#./}"
 fi
 
 echo "fakeowner filesystem detected — setting up native bind-mount shadows."
@@ -86,6 +95,24 @@ BIND_SOURCES=(
   "file:nginx/nginx.ancillary.conf"
   "dir:nginx/certs"
 )
+
+check_shadow_target() {
+  local source="$1"
+  local native="$2"
+
+  [[ -L "$source" ]] || return 1
+  if [[ "$(readlink "$source")" != "$native" ]]; then
+    printf 'ERROR: %s points to %s, expected %s. Move its data manually before retrying.\n' \
+      "$source" "$(readlink "$source")" "$native" >&2
+    exit 1
+  fi
+  return 0
+}
+
+for entry in "${BIND_SOURCES[@]}"; do
+  rel_path="${entry#*:}"
+  check_shadow_target "$PROJECT_ROOT/$rel_path" "$NATIVE_BASE/$rel_path" || true
+done
 
 shadow_dir() {
   local rel_path="$1"
