@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "tag": "v0.4.7",
+    "version": "0.4.7",
+    "commitSha": "47d3d5e49ad5f138464d52eb90f19cad3f32dfc5",
+    "releasedAt": "2026-10-12T11:53:17Z",
+    "summary": "Release v0.4.7 public runtime images and migration contract.",
+    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.4.7",
+    "changelog": "## [0.4.7] - 2026-10-12\n\n### Bug Fixes\n\n- Fetch changelogs through backend with server diagnostics\n\n\n### Other\n\n- Merge pull request #415 from HustleOps/codex/backend-changelog-fetching\n\nfix(releases): fetch changelogs through backend with server diagnostics\n\n\n"
+  },
+  "contract": {
+    "ref": "ghcr.io/hustleops/hustleops-release-contract@sha256:0941dde8a5e8cb3d3c1bcd87224f690ec8e1e9bb2d156709ead380ccd80f2fa3",
+    "digest": "sha256:0941dde8a5e8cb3d3c1bcd87224f690ec8e1e9bb2d156709ead380ccd80f2fa3",
+    "digestRef": "ghcr.io/hustleops/hustleops-release-contract@sha256:0941dde8a5e8cb3d3c1bcd87224f690ec8e1e9bb2d156709ead380ccd80f2fa3",
+    "verifiedAt": "2026-10-12T12:00:09.996Z"
+  },
+  "images": {
+    "backend": {
+      "ref": "ghcr.io/hustleops/hustleops-public-backend",
+      "tag": "0.4.7",
+      "digest": "sha256:e03f7860ac936d9f6113c9bae32554f5f3265a02839e6cb3939350b028687457",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend:0.4.7@sha256:e03f7860ac936d9f6113c9bae32554f5f3265a02839e6cb3939350b028687457"
+    },
+    "frontend": {
+      "ref": "ghcr.io/hustleops/hustleops-public-frontend",
+      "tag": "0.4.7",
+      "digest": "sha256:8b06ca8f5ca3769f08fd67fcb4635169d00f5144a4938e23c2ec4a2ba546aa2b",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-frontend:0.4.7@sha256:8b06ca8f5ca3769f08fd67fcb4635169d00f5144a4938e23c2ec4a2ba546aa2b"
+    },
+    "migration": {
+      "ref": "ghcr.io/hustleops/hustleops-public-backend-migrate",
+      "tag": "0.4.7",
+      "digest": "sha256:1e7acf18e8eee8234502ada2bfe1c1b7e1ad314dbc744faa269dc0c44bcd60b4",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend-migrate:0.4.7@sha256:1e7acf18e8eee8234502ada2bfe1c1b7e1ad314dbc744faa269dc0c44bcd60b4"
+    }
+  },
+  "runtime": {
+    "platform": "linux/amd64",
+    "services": {
+      "backend": {
+        "containerPort": 3000,
+        "healthPath": "/health",
+        "requiredEnv": [
+          "DATABASE_URL",
+          "JWT_ACCESS_SECRET",
+          "JWT_REFRESH_SECRET",
+          "TWO_FACTOR_ENCRYPTION_KEY",
+          "CORS_ORIGIN"
+        ],
+        "requiredCapabilities": [
+          "postgres",
+          "redis",
+          "opensearch",
+          "writableUploads",
+          "writableTmp"
+        ]
+      },
+      "frontend": {
+        "containerPort": 8080,
+        "healthPath": "/",
+        "requiredCapabilities": [
+          "httpIngress"
+        ]
+      },
+      "migration": {
+        "requiredEnv": [
+          "DATABASE_URL"
+        ],
+        "requiredCapabilities": [
+          "postgres"
+        ]
+      }
+    }
+  },
+  "trust": {
+    "provider": "github-actions",
+    "cosignIssuer": "https://token.actions.githubusercontent.com",
+    "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/heads/main",
+    "requiredArtifacts": [
+      "signature",
+      "provenance",
+      "sbom"
+    ],
+    "sbomFormat": "spdx-json",
+    "provenanceMode": "max"
+  },
+  "migration": {
+    "required": true,
+    "databaseUrlEnvVar": "DATABASE_URL",
+    "timeoutSeconds": 600,
+    "timeoutSemantics": "fail if the migration command exceeds timeoutSeconds or exits non-zero",
+    "successExitCode": 0,
+    "successOutputMarkers": [
+      "All migrations have been successfully applied.",
+      "No pending migrations to apply."
+    ],
+    "ownership": "single-runner",
+    "rerunPolicy": "idempotent",
+    "repeatReleaseBehavior": "safe-to-rerun-same-release"
+  },
+  "deployment": {
+    "trigger": "release-v0.4.7-47d3d5e49ad5"
+  }
+}
