@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "tag": "v0.4.6",
+    "version": "0.4.6",
+    "commitSha": "5b8be3be0e81331064b3add8f5faf1b029d0103c",
+    "releasedAt": "2026-10-12T08:32:23Z",
+    "summary": "Release v0.4.6 public runtime images and migration contract.",
+    "url": "https://github.com/HustleOps/hustleops-app/releases/tag/v0.4.6",
+    "changelog": "## [0.4.6] - 2026-10-12\n\n### Bug Fixes\n\n- Import system settings module\n\n- Execute advisory locks without decoding results\n\n- Verify session admission before writes\n\n- Keep tab panel keys unique by section\n\n- Validate entity row lock targets\n\n- Allow 32 reads and reserve a final answer step\n\n- Gate retained entity chats and pending proposals\n\n- Fence requests and refreshes to the current account\n\n- Preserve session families across refresh rotation\n\n- Restore requested routes and shared browser sessions\n\n- Move system role info into badge tooltip\n\n- Stretch entity detail tabs across the content panel\n\n- Match simple table background to standard data table\n\n- Disable multi-column sorting in settings tables\n\n- Check active parent before MCP discovery\n\n- Persist core create and update audit transactionally\n\n- Distribute socket events across API replicas\n\n- Keep recycle custom fields in the owning transaction\n\n- Preserve compaction progress without omitting history\n\n- Resolve architecture simplification merge conflicts\n\n- Normalize trailing slashes in API base\n\n- ⚠️ **BREAKING** Require complete release metadata\n\n- Canonicalize audit and navigation identities\n\n- Align UUID fixtures and typecheck baseline\n\n- Resolve conflicts with main\n\n- Resolve architecture simplification merge conflict\n\n- Enforce strict response and lifecycle contracts\n\n- Retain deleted incident display IDs in search\n\n- Prevent pie label overlap and wrap legends\n\n- Bootstrap runtime smoke database\n\n\n### Documentation\n\n- Document coordinated rollout and recovery limits\n\n- Document multi-replica delivery operations\n\n- Document bounded-work rollout and fanout cutover\n\n- Document the v1 route cutoff\n\n\n### Features\n\n- Add settings grants and recovery schema\n\n- Enforce settings permissions and session ownership\n\n- Gate settings and fence session-bound actions\n\n- Support managed instance license trust\n\n- Install short-lived managed instance licenses\n\n- Compact the role permission grid\n\n- Persist tool activity and project public failure details\n\n- Add retained state and shared permissions\n\n- Add lifecycle API and active-only entity access\n\n- Add recovery view and permission-aware deletion\n\n- Index investigation message content\n\n- Add entity-scoped investigation search APIs\n\n- Unify global search results and navigation\n\n- Update app logo and shield favicon\n\n- Add public release history and update badge\n\n- Add refresh predecessor metadata\n\n- Add sorting and pagination to seat reservations\n\n- Add bounded Redis business event relay\n\n- Share throttler counters through Redis\n\n- ⚠️ **BREAKING** Replace global time range with widget timeframes\n\n- Configure and load timeframes per widget\n\n- Configure ranked result limits per widget\n\n- Add on-demand widget refresh\n\n- Audit login and logout sessions\n\n\n### Miscellaneous\n\n- Package permission maintenance and document cutover\n\n- Merge main into auth session refactor\n\n- Merge main into recycle bin branch\n\n- Merge main into AI tool activity branch\n\n- Merge main into system settings permissions\n\n- Generate canonical alert transport declarations\n\n- Remove resolved alert typecheck diagnostics\n\n- Reuse backend dependency stage\n\n- Remove obsolete package seed metadata\n\n- Remove resolved typecheck diagnostics\n\n- Rerun PR checks when metadata changes\n\n- Remove resolved frontend typecheck diagnostics\n\n- Remove resolved typecheck diagnostics\n\n- Merge main into compatibility cutoff branch\n\n\n### Other\n\n- Merge pull request #375 from HustleOps/codex/global-search-investigations\n\nfeat(search): unify global search with investigation context\n\n- Merge pull request #377 from HustleOps/codex/about-updates-and-branding\n\nfeat(about): add public release history and update badge\n\n- Merge pull request #376 from HustleOps/codex/auth-return-shared-sessions\n\nfix(auth): restore requested links and shared tab sessions\n\n- Merge pull request #378 from HustleOps/codex/entity-recycle-bin\n\nfeat(recycle-bin): add recoverable entity deletion and restoration\n\n- Merge pull request #379 from HustleOps/codex/ai-tool-activity-and-proposal-previews\n\nfeat(ai): add durable tool activity and explicit proposal previews\n\n- Merge pull request #380 from HustleOps/codex/system-settings-permissions\n\nfeat(auth): enforce permissions across system settings and sessions\n\n- Merge pull request #381 from HustleOps/codex/ui-settings-detail-polish\n\nstyle(settings): polish detail tabs and settings tables\n\n- Merge pull request #382 from HustleOps/codex/fetch-remote-and-start-app\n\nfix(pagination): standardize query and table pagination behavior\n\n- Merge pull request #383 from HustleOps/codex/squash-all-migrations\n\nrefactor(prisma): squash migration history\n\n- Merge pull request #384 from HustleOps/codex/mcp-active-parent-preflight\n\nfix(ai): check active parent before MCP discovery\n\n- Merge pull request #385 from HustleOps/codex/transactional-core-audit\n\nfix(audit): persist core create and update audit transactionally\n\n- Merge pull request #386 from HustleOps/codex/shared-services-responsibilities\n\nrefactor: separate shared service responsibilities\n\n- Merge pull request #387 from HustleOps/codex/realtime-shared-distribution\n\nfeat(realtime): distribute socket events across instances\n\n- Merge pull request #388 from HustleOps/codex/alert-transport-contracts\n\nfeat(alerts): define shared alert transport contracts\n\n- Merge pull request #389 from HustleOps/codex/prisma-query-contracts\n\nrefactor(prisma): preserve query types and transaction ownership\n\n- Merge pull request #390 from HustleOps/codex/users-teams-module-cleanup\n\nrefactor(users): remove unnecessary teams dependency cycle\n\n- Merge pull request #391 from HustleOps/codex/5-clarify-shared-provider\n\nrefactor(backend): centralize shared provider modules\n\n- Merge pull request #392 from HustleOps/codex/1-plan-rate-limiting-fix\n\nfeat(rate-limiting): share throttler counters through Redis\n\n- Merge pull request #393 from HustleOps/codex/ponytail-cleanup\n\nrefactor: remove unused code and simplify shared helpers\n\n- Merge pull request #394 from HustleOps/codex/base-entity-separation\n\nrefactor(entities): separate shared entity operation services\n\n- Merge pull request #395 from HustleOps/codex/simplify-app-architecture\n\nrefactor: simplify app architecture\n\n- Merge pull request #396 from HustleOps/codex/simplify-app-architecture-2\n\nrefactor(settings): share settings query URL handling\n\n- Merge pull request #397 from HustleOps/codex/app-architecture-simplification\n\nrefactor!: simplify application architecture\n\n- Merge origin/main into codex/bounded-work-budgeting\n\n- Merge pull request #398 from HustleOps/codex/bounded-work-budgeting\n\nperf!: bound backlog work and page entity reads\n\n- Merge pull request #399 from HustleOps/codex/global-architecture-simplification\n\nrefactor: simplify cross-cutting service and link workflows\n\n- Merge pull request #400 from HustleOps/codex/app-simplification\n\nrefactor: simplify entity workflows and shared services\n\n- Merge pull request #401 from HustleOps/codex/current-contract-cutover\n\nrefactor!: remove historical application compatibility\n\n- Merge origin/main into codex/api-v1-clean-cutoff\n\n- Merge pull request #402 from HustleOps/codex/api-v1-clean-cutoff\n\nrefactor(api)!: consolidate current routes under v1\n\n- Merge pull request #404 from HustleOps/codex/frontend-api-factories\n\n- Merge pull request #403 from HustleOps/codex/plan-appwide-compatibility-cleanup\n\nrefactor(webhooks): require current response contracts\n\n- Merge pull request #405 from HustleOps/codex/app-architecture-simplification-3d8f\n\nrefactor(app): simplify application architecture\n\n- Merge pull request #407 from HustleOps/codex/architecture-simplification-1298\n\nrefactor(app): reuse helpers and remove redundant service wiring\n\n- Merge pull request #408 from HustleOps/codex/app-compatibility-cutoff\n\nrefactor(app)!: remove legacy compatibility contracts\n\n- Merge pull request #406 from HustleOps/codex/frontend-api-factories\n\nrefactor(uuid)!: enforce UUID v4 across the app and storage\n\n- Merge pull request #409 from HustleOps/codex/plan-architecture-simplification\n\nrefactor: consolidate shared entity behavior and remove redundant paths\n\n- Merge pull request #410 from HustleOps/codex/find-appwide-compatibility-layers\n\nfix(auth): enforce strict authentication and lifecycle contracts\n\n- Merge pull request #411 from HustleOps/codex/finish-app-compatibility-cutoff\n\nrefactor!: finish disposable-state compatibility cutoff\n\n- Merge pull request #412 from HustleOps/codex/plan-login-and-logout-audit\n\nfeat(auth): record login and logout session audits\n\n- Merge origin/main into codex/dashboard-widget-timeframes\n\n- Merge pull request #413 from HustleOps/codex/dashboard-widget-timeframes\n\nfeat(dashboard)!: add per-widget timeframes, result limits, and refresh\n\n- Merge pull request #414 from HustleOps/codex/fix-release-runtime-smoke-bootstrap\n\nfix(release): bootstrap runtime smoke database\n\n\n### Performance\n\n- Standardize default page sizes at 25\n\n- Add bounded-work indexes and durable fanout state\n\n- Paginate linked reads and scope picker exclusions\n\n- Bound SLA and notification maintenance passes\n\n- Aggregate in SQL and page audit performers\n\n- Bound history context and recovery sweeps\n\n\n### Refactoring\n\n- Remove calculated effects from proposal previews\n\n- Unify entity table pagination\n\n- Share pagination across notifications and history\n\n- Reuse shared pagination in link dialogs\n\n- Squash migration history\n\n- Consolidate single mutation operations\n\n- Isolate entity decision guards and cleanup\n\n- Extract MCP discovery and dispatch\n\n- Bind HTTP responses to wire contracts\n\n- Type alert requests and edit payloads\n\n- Preserve generated entity query contracts\n\n- Remove unused teams module cycle\n\n- Inject teams service directly\n\n- Centralize shared provider modules\n\n- Remove unused seat lease methods\n\n- Remove orphan session and SSO helpers\n\n- Remove unused audit and settings readers\n\n- Remove unused select and linked table wrappers\n\n- Remove unused hooks and invalidation option\n\n- Remove unused frontend parsing and highlighting\n\n- Share version and digest validators\n\n- Remove unused callbacks and permission helper\n\n- Reuse TOTP validation and remove unused reader\n\n- Remove unused login gate wrapper\n\n- Remove unused catalog and activity helpers\n\n- Remove unused single restore path\n\n- Remove unused shared component options\n\n- Remove unused typing and navigation options\n\n- Share numeric query validation\n\n- Reuse required argument helper\n\n- Remove unused session and authority options\n\n- Remove unused tool and snapshot options\n\n- Remove unused lifecycle and relation options\n\n- Remove unused count filtering and shared exports\n\n- Remove unused decorator and audit options\n\n- Remove unused configuration overrides\n\n- Collapse SQL table helpers\n\n- Remove unused utility state and types\n\n- Remove unused auth and request options\n\n- Simplify shell and settings interfaces\n\n- Remove unused entity workflow branches\n\n- Remove unused shared UI customization\n\n- Simplify messaging and AI interfaces\n\n- Remove unused table and analytics options\n\n- Remove redundant trust metadata wrapper\n\n- Remove unread index audit metadata\n\n- Extract query operations\n\n- Extract recycle operations\n\n- Extract permanent deletion operations\n\n- Isolate incident relationship policy\n\n- Simplify app architecture\n\n- Share settings query URL handling\n\n- Simplify entity detail update and deletion wiring\n\n- Remove ineffective active-user cache plumbing\n\n- ⚠️ **BREAKING** Unify tag responses and linked projections\n\n- Share the streaming response lifecycle\n\n- ⚠️ **BREAKING** Share query core and support prefix stars only\n\n- Reuse pinned lookup and bounded response handling\n\n- Remove cross-tab detail layout synchronization\n\n- ⚠️ **BREAKING** Normalize stored envelopes before v1-only cutover\n\n- Require actor-bound delete inputs\n\n- Share escalation payload serialization\n\n- Centralize rows and search queries\n\n- Centralize frontend cache effects\n\n- Remove unreachable create recovery\n\n- Simplify command preflights and count dispatch\n\n- Share numeric validation constraints\n\n- Route operations to shared recycle service\n\n- Share entity update event emission\n\n- Reuse snapshots for audit and log labels\n\n- Remove unused internal event aliases\n\n- Reuse bulk update preparation\n\n- Share remote decision finalization\n\n- Reuse locked state for single updates\n\n- Simplify entity workflows and shared services\n\n- ⚠️ **BREAKING** Consolidate current routes under v1\n\n- ⚠️ **BREAKING** Establish the current schema and session baseline\n\n- ⚠️ **BREAKING** Require current chat and role grant contracts\n\n- Remove the legacy fanout bridge\n\n- ⚠️ **BREAKING** Remove retired routes and browser fallbacks\n\n- Add typed JSON request factories\n\n- Replace raw request builders with factories\n\n- Require typed snapshot counts and projections\n\n- Simplify application architecture\n\n- Remove unused helpers and redundant create checks\n\n- Reuse JSON request helper for settings mutations\n\n- Reuse protected query and team action hooks\n\n- Keep purge child cleanup in purge service\n\n- Simplify n8n completion and error details\n\n- Reuse timestamp cursor filter in timelines\n\n- ⚠️ **BREAKING** Require canonical response fields\n\n- Remove initial-value aliases\n\n- ⚠️ **BREAKING** Require current session contracts\n\n- ⚠️ **BREAKING** Remove retired grouped search\n\n- ⚠️ **BREAKING** Remove retired stats endpoint\n\n- ⚠️ **BREAKING** Require current persisted metadata\n\n- ⚠️ **BREAKING** Enforce current manifest version\n\n- Consolidate shared entity behavior and remove redundant paths\n\n- ⚠️ **BREAKING** Enforce UUID v4 in storage and backend\n\n- Unify frontend UUID v4 validation\n\n- ⚠️ **BREAKING** Finish disposable-state compatibility cutoff\n\n- Align actor cleanup with approved scope\n\n\n### Testing\n\n- Align license fixture and typecheck baseline\n\n\n"
+  },
+  "contract": {
+    "ref": "ghcr.io/hustleops/hustleops-release-contract@sha256:bbce94f3f46da2f7785b92b364c96c439823b9e9433757def94994025f70e8de",
+    "digest": "sha256:bbce94f3f46da2f7785b92b364c96c439823b9e9433757def94994025f70e8de",
+    "digestRef": "ghcr.io/hustleops/hustleops-release-contract@sha256:bbce94f3f46da2f7785b92b364c96c439823b9e9433757def94994025f70e8de",
+    "verifiedAt": "2026-10-12T08:37:55.292Z"
+  },
+  "images": {
+    "backend": {
+      "ref": "ghcr.io/hustleops/hustleops-public-backend",
+      "tag": "0.4.6",
+      "digest": "sha256:dc5c6376243a8a078de2096d940df76555f5231affb4c965197b854f0dafc2a9",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend:0.4.6@sha256:dc5c6376243a8a078de2096d940df76555f5231affb4c965197b854f0dafc2a9"
+    },
+    "frontend": {
+      "ref": "ghcr.io/hustleops/hustleops-public-frontend",
+      "tag": "0.4.6",
+      "digest": "sha256:b53bf63cdc31abad828433916ac0fa9b7a705d504233067b400a8a3b3c68606e",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-frontend:0.4.6@sha256:b53bf63cdc31abad828433916ac0fa9b7a705d504233067b400a8a3b3c68606e"
+    },
+    "migration": {
+      "ref": "ghcr.io/hustleops/hustleops-public-backend-migrate",
+      "tag": "0.4.6",
+      "digest": "sha256:4a45fffae1a110c7ada00ff99f49bd8d42a5270a9a1708c7dbcbda48cf7b58a2",
+      "platform": "linux/amd64",
+      "immutableRef": "ghcr.io/hustleops/hustleops-public-backend-migrate:0.4.6@sha256:4a45fffae1a110c7ada00ff99f49bd8d42a5270a9a1708c7dbcbda48cf7b58a2"
+    }
+  },
+  "runtime": {
+    "platform": "linux/amd64",
+    "services": {
+      "backend": {
+        "containerPort": 3000,
+        "healthPath": "/health",
+        "requiredEnv": [
+          "DATABASE_URL",
+          "JWT_ACCESS_SECRET",
+          "JWT_REFRESH_SECRET",
+          "TWO_FACTOR_ENCRYPTION_KEY",
+          "CORS_ORIGIN"
+        ],
+        "requiredCapabilities": [
+          "postgres",
+          "redis",
+          "opensearch",
+          "writableUploads",
+          "writableTmp"
+        ]
+      },
+      "frontend": {
+        "containerPort": 8080,
+        "healthPath": "/",
+        "requiredCapabilities": [
+          "httpIngress"
+        ]
+      },
+      "migration": {
+        "requiredEnv": [
+          "DATABASE_URL"
+        ],
+        "requiredCapabilities": [
+          "postgres"
+        ]
+      }
+    }
+  },
+  "trust": {
+    "provider": "github-actions",
+    "cosignIssuer": "https://token.actions.githubusercontent.com",
+    "certificateIdentity": "https://github.com/HustleOps/hustleops-app/.github/workflows/release.yml@refs/heads/main",
+    "requiredArtifacts": [
+      "signature",
+      "provenance",
+      "sbom"
+    ],
+    "sbomFormat": "spdx-json",
+    "provenanceMode": "max"
+  },
+  "migration": {
+    "required": true,
+    "databaseUrlEnvVar": "DATABASE_URL",
+    "timeoutSeconds": 600,
+    "timeoutSemantics": "fail if the migration command exceeds timeoutSeconds or exits non-zero",
+    "successExitCode": 0,
+    "successOutputMarkers": [
+      "All migrations have been successfully applied.",
+      "No pending migrations to apply."
+    ],
+    "ownership": "single-runner",
+    "rerunPolicy": "idempotent",
+    "repeatReleaseBehavior": "safe-to-rerun-same-release"
+  },
+  "deployment": {
+    "trigger": "release-v0.4.6-5b8be3be0e81"
+  }
+}
