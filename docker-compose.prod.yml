@@ -183,7 +183,7 @@ services:
           "CMD",
           "/nodejs/bin/node",
           "-e",
-          "fetch('http://127.0.0.1:3000/health/live').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))",
+          "fetch('http://127.0.0.1:3000/health', { signal: AbortSignal.timeout(4000), redirect: 'error' }).then(async (response) => { if (response.status !== 200) throw new Error('HTTP ' + response.status); const health = await response.json(); if (health?.status !== 'ok' || health?.details?.database?.status !== 'up') throw new Error('missing successful database health evidence'); }).catch((error) => { console.error(error.message); process.exit(1); })",
         ]
       interval: 15s
       timeout: 5s
